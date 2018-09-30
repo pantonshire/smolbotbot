@@ -60,11 +60,12 @@ def search(robots, query):
         
         for robot in robots:
             name = sanitise(robot[1])
+            name_no_tail = tail_re.sub("", name)
             
             if name == word:
                 print("Exit point 1")
                 return success_text(robot)
-            elif tail_re.sub("", name) == word and estimate == None:
+            elif (name_no_tail == word or name_no_tail == tail_re.sub("", word)) and estimate == None:
                 print("Estimate point 1")
                 estimate = robot
             elif (len(word) >= 4 and word in name) and estimate == None:
