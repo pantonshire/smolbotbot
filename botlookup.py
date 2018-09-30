@@ -63,13 +63,13 @@ def search(robots, query):
             name_no_tail = tail_re.sub("", name)
             
             if name == word:
-                print("Exit point 1")
+                #print("Exit point 1")
                 return success_text(robot)
             elif (name_no_tail == word or name_no_tail == tail_re.sub("", word)) and estimate == None:
-                print("Estimate point 1")
+                #print("Estimate point 1")
                 estimate = robot
             elif (len(word) >= 4 and word in name) and estimate == None:
-                print("Estimate point 2")
+                #print("Estimate point 2")
                 estimate = robot
             elif numerical and numerical_val == int(robot[0]):
                 return success_text(robot)
@@ -82,7 +82,7 @@ def search(robots, query):
             missingbot273 = True
 
     if estimate != None:
-        print("Exit point 2")
+        #print("Exit point 2")
         return success_text(estimate)
 
     # Special cases
@@ -103,7 +103,7 @@ def search(robots, query):
         name = sanitise(robot[1])
         name_no_tail = tail_re.sub("", name)
         if name in amalgam or (len(name_no_tail) >= 4 and name_no_tail in amalgam):
-            print("Exit point 3")
+            #print("Exit point 3")
             return success_text(robot)
         
     # Return a failurebot
