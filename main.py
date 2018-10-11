@@ -3,6 +3,7 @@ import twitter
 import codecs
 import time
 import re
+import tweepy
 
 robotfile = codecs.open("ROBOT_TABLE", "r", "utf-8")
 robots = [tuple(line.strip().split(",")) for line in robotfile]
