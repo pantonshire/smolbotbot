@@ -10,6 +10,7 @@ robots = [tuple(line.strip().split(",")) for line in robotfile]
 robotfile.close()
 
 responded_to = []
+responded_dms = []
 
 
 def save_robot(robot):
@@ -55,6 +56,21 @@ def check_requests():
         twitter.reply(mention, search_result)
         
 
+def check_dms():
+    global robots, responded_dms
+    dms = twitter.direct_messages(7200, responded_dms)
+    for dm in dms:
+        responded_dms.append(dm["id"])
+        text = dm["message_create"]["message_data"]["text"]
+        search_result = search.search(robots, text).replace("\'", "’").replace("\"", "”")
+        print(search_result)
+        sender_id = dm["message_create"]["sender_id"]
+        if twitter.send_direct_message(sender_id, search_result):
+            responded_dms.append(dm["id"])
+        else:
+            print("DM failed to " + sender_id)
+
+
 i = 0
 while True:
   try:
@@ -63,6 +79,9 @@ while True:
      if i >= 240:
         check_new_robots()
         i = 0
+     # Should be called once per minute
+     if i % 4 == 0:
+        check_dms()
      check_requests()
      time.sleep(15)
   except tweepy.TweepError:

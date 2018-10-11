@@ -15,7 +15,8 @@ def is_numerical(word):
 
 
 def blacklisted(word):
-    return "@" in word or "#" in word
+    lower = word.lower()
+    return "@" in word or "#" in word or lower == "need" or lower == "robot"
 
 
 def requesting_random(word):
