@@ -15,8 +15,8 @@ def is_numerical(word):
 
 
 def blacklisted(word):
-    lower = word.lower()
-    return "@" in word or "#" in word or lower == "need" or lower == "robot"
+    sanitised = sanitise(word)
+    return "@" in word or "#" in word or sanitised == "need" or sanitised == "robot"
 
 
 def requesting_random(word):
@@ -47,6 +47,7 @@ def search(robots, query):
     missingbot273 = False
     
     words = [sanitise(word) for word in re.split("\s+", query) if not blacklisted(word)]
+    print(words)
 
     estimate = None
 
