@@ -47,7 +47,6 @@ def search(robots, query):
     missingbot273 = False
     
     words = [sanitise(word) for word in re.split("\s+", query) if not blacklisted(word)]
-    print(words)
 
     estimate = None
 
