@@ -2,6 +2,9 @@ import re
 import random
 
 
+blacklisted_words = ["need", "robot", "make", "can", "find", "something"]
+
+
 def sanitise(word):
     return word.replace(".", "").replace(",", "").replace("!", "").replace("?", "").replace("-", "").strip().lower()
 
@@ -15,8 +18,9 @@ def is_numerical(word):
 
 
 def blacklisted(word):
+    global blacklisted_words
     sanitised = sanitise(word)
-    return "@" in word or "#" in word or sanitised == "need" or sanitised == "robot" or sanitised == "make" or sanitised == "can"
+    return "@" in word or "#" in word or sanititised in blacklisted_words
 
 
 def requesting_random(word):
