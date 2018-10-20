@@ -63,10 +63,11 @@ def check_dms():
         responded_dms.append(dm["id"])
         text = dm["message_create"]["message_data"]["text"]
         search_result = search.search(robots, text).replace("\'", "’").replace("\"", "”")
-        print(search_result)
+        #print(search_result)
         sender_id = dm["message_create"]["sender_id"]
         if twitter.send_direct_message(sender_id, search_result):
             responded_dms.append(dm["id"])
+            print("Sent a DM")
         else:
             print("DM failed to " + sender_id)
 

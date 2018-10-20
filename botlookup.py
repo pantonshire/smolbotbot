@@ -16,7 +16,7 @@ def is_numerical(word):
 
 def blacklisted(word):
     sanitised = sanitise(word)
-    return "@" in word or "#" in word or sanitised == "need" or sanitised == "robot"
+    return "@" in word or "#" in word or sanitised == "need" or sanitised == "robot" or sanitised == "make" or sanitised == "can"
 
 
 def requesting_random(word):
