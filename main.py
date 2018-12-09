@@ -5,7 +5,7 @@ import time
 import re
 import tweepy
 
-robotfile = codecs.open("ROBOT_TABLE", "r", "utf-8")
+robotfile = codecs.open("data/old-robot-table.csv", "r", "utf-8")
 robots = [tuple(line.strip().split(",")) for line in robotfile]
 robotfile.close()
 
@@ -14,7 +14,7 @@ responded_dms = []
 
 
 def save_robot(robot):
-    outputfile = codecs.open("ROBOT_TABLE", "a", "utf-8")
+    outputfile = codecs.open("old-robot-table.csv", "a", "utf-8")
     outputfile.write(",".join([str(item) for item in robot]) + "\n")
     outputfile.close()
     print("Saved new robot: #" + str(robot[0]) + " " + robot[1])

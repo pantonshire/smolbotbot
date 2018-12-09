@@ -6,8 +6,8 @@ import time
 import re
 import tweepy
 
-print("> Loading robots from ROBOT_TABLE")
-robotfile = codecs.open("ROBOT_TABLE", "r", "utf-8")
+print("> Loading robots from old-robot-table.csv")
+robotfile = codecs.open("old-robot-table.csv", "r", "utf-8")
 robots = [tuple(line.strip().split(",")) for line in robotfile]
 robotfile.close()
 print("> Loaded " + str(len(robots)) + " robots")

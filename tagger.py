@@ -69,17 +69,17 @@ special_char_regex = re.compile("[\*]")
 sanitise_expressions = [picture_regex, at_regex, hashtag_regex, bot_intro_regex, special_char_regex]
 polish_expressions = [picture_regex, bot_intro_regex]
 
-robotfile = codecs.open("ROBOT_TABLE", "r", "utf-8")
+robotfile = codecs.open("data/old-robot-table.csv", "r", "utf-8")
 robots = [tuple(line.strip().split(",")) for line in robotfile]
 robotfile.close()
 del robotfile
 
 robots = sorted(robots, key = lambda robot: int(robot[0]))
 
-outputfile = open("robot-data.csv", "a")
+outputfile = open("data/robot-data.csv", "a")
 writer = csv.writer(outputfile, delimiter=",", quotechar='"', quoting=csv.QUOTE_ALL)
 
-blacklistfile = open("keyword-blacklist.txt", "r")
+blacklistfile = open("data/keyword-blacklist.txt", "r")
 blacklist = [line.lower().strip() for line in blacklistfile]
 blacklistfile.close()
 del blacklistfile

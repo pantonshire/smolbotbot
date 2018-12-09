@@ -4,7 +4,7 @@ import subprocess as sp
 import json
 import datetime as dt
 
-keyfile = open(".api", "rt")
+keyfile = open("data/.api", "rt")
 lines = [line.strip() for line in keyfile]
 keyfile.close()
 

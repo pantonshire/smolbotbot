@@ -6,7 +6,7 @@ robots = []
 
 max_to_check = 652
 
-inf = open("ROBOT_TABLE", "rt")
+inf = open("old-robot-table.csv", "rt")
 numbers = [int(line.split(",")[0]) for line in inf]
 tocheck = []
 for x in range(1, max_to_check):
@@ -45,7 +45,7 @@ with Browser() as browser:
         if not found:
             print("No robot #" + str(no) + " found")
 
-outputfile = open("ROBOT_TABLE", "at")
+outputfile = open("old-robot-table.csv", "at")
 for robot in robots:
     outputfile.write(",".join([str(item) for item in robot]) + "\n")
 outputfile.close()
