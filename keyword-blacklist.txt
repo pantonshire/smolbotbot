@@ -8,3 +8,10 @@ bots
 little
 requestbot
 lil
+help
+helpful
+arm
+arms
+leg
+legs
+able
