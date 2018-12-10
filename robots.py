@@ -1,4 +1,5 @@
 import csv
+import random
 from collections import defaultdict
 
 
@@ -14,9 +15,9 @@ def setup():
         add_robot(row)
 
 
-# Adds the robot to the robots list and all of the secondary-key indexes
+# Adds the robot to the robots list and all of the secondary-key indexes.
 def add_robot(attributes):
-    global robots, number_index, name_index, tag_index, mention_index
+    global robots, shuffled_robots_daily, shuffled_robots_request, number_index, name_index, tag_index, mention_index
     try:
         if len(attributes) != 9:
             print("Invalid number of attributes supplied")
@@ -41,6 +42,8 @@ def add_robot(attributes):
             "hashtags":     attributes[8].split(" ")
         }
         robots.append(robot)
+        shuffled_robots_daily.insert(random.randrange(len(shuffled_robots_daily) + 1), list_pos)
+        shuffled_robots_request.insert(random.randrange(len(shuffled_robots_request) + 1), list_pos)
 
         number_index[robot_number].append(list_pos)
         name_index[robot_name].append(list_pos)
@@ -55,7 +58,17 @@ def add_robot(attributes):
         return
 
 
-# Returns the robot's data as a list of strings which can be written to the csv file
+# Writes a new robots's data to the csv file.
+# Data should be supplied as a list, not a dictionary.
+# Should not be used for bulk writing, since the file is opened and closed with each call.
+def write_to_csv(robot_data):
+    robots_file = open("data/robot-data.csv", "a")
+    writer = csv.writer(robots_file, delimiter=",", quotechar='"', quoting=csv.QUOTE_ALL)
+    writer.writerow(robot_data)
+    robots_file.close()
+
+
+# Returns the robot's data as a list of strings which can be written to the csv file.
 def robot_to_row(robot):
     return [
         str(robot["number"]),
@@ -70,11 +83,35 @@ def robot_to_row(robot):
     ]
 
 
+def next_daily_robot():
+    global shuffled_robots_daily, current_daily
+    robot = robots[shuffled_robots_daily[current_random]]
+    current_daily += 1
+    if current_daily >= len(shuffled_robots_daily):
+        current_daily = 0
+        shuffled_robots_daily = random.shuffle(shuffled_robots_daily)
+    return robot
+
+
+def next_random_robot():
+    global robots, shuffled_robots_request, current_random
+    robot = robots[shuffled_robots_request[current_random]]
+    current_random += 1
+    if current_random >= len(shuffled_robots_request):
+        current_random = 0
+        shuffled_robots_request = random.shuffle(shuffled_robots_request)
+    return robot
+
+
 robots = []
+shuffled_robots_daily = []
+shuffled_robots_request = []
 number_index = defaultdict(list)
 name_index = defaultdict(list)
 tag_index = defaultdict(list)
 mention_index = defaultdict(list)
 
-setup()
+current_daily = 0
+current_random = 0
 
+setup()
