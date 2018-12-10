@@ -1,5 +1,6 @@
 import csv
 import random
+import re
 from collections import defaultdict
 
 
@@ -17,7 +18,9 @@ def setup():
 
 # Adds the robot to the robots list and all of the secondary-key indexes.
 def add_robot(attributes):
-    global robots, shuffled_robots_daily, shuffled_robots_request, number_index, name_index, tag_index, mention_index
+    global robots, shuffled_robots_daily, shuffled_robots_request,\
+        number_index, name_index, tag_index, mention_index
+
     try:
         if len(attributes) != 9:
             print("Invalid number of attributes supplied")
@@ -46,11 +49,17 @@ def add_robot(attributes):
         shuffled_robots_request.insert(random.randrange(len(shuffled_robots_request) + 1), list_pos)
 
         number_index[robot_number].append(list_pos)
-        name_index[robot_name].append(list_pos)
+
+        index_name = re.sub("bot(s)?$", "", robot_name.lower())
+        name_index[index_name].append(list_pos)
+
         for tag in robot_tags:
-            tag_index[tag].append(list_pos)
+            index_tag = tag.lower()
+            tag_index[index_tag].append(list_pos)
+
         for mention in robot_mentions:
-            mention_index[mention].append(list_pos)
+            index_mention = mention.lower()
+            mention_index[index_mention].append(list_pos)
 
     except ValueError:
         print("Invalid data supplied:")

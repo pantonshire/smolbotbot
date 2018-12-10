@@ -6,8 +6,9 @@ import re
 
 thank_keywords = ("thank", "thanks", "thx", "ty", "merci")
 
-tokenize_expression_first = re.compile("(\s+|((?<=\w)\-(?=\w)))")
-sanitise_expression_first = re.compile("[^\w\-]]")
+hyphen_re = re.compile("(\-(?=\D))|((?<=\S)\-)")
+first_sanitise_re = re.compile("[^\w\-]")
+bot_ending_re = re.compile("bot(s)?$")
 
 
 # Search for robots given the query.
@@ -21,18 +22,23 @@ def search(query):
     if by_name:
         return robot_list_result(by_name)
 
+    by_number = search_by_number(tokens)
+    if by_number:
+        return robot_list_result(by_number)
+
 
 # First pass tokenization of the query
 # Splits into tokens by whitespace and hyphens then removes punctuation.
 def tokenize_first_pass(query):
-    global tokenize_expression_first
-    return [sanitise_token(token) for token in tokenize_expression_first.split(query)]
+    global hyphen_re
+    hyphen_re.sub(" ", query)
+    return [sanitise_token(token) for token in query.split()]
 
 
 # Sanitise the token by converting it to lowercase and removing any trailing whitespace.
 def sanitise_token(token):
-    global sanitise_expression_first
-    return sanitise_expression_first.sub("", token.lower().strip())
+    global first_sanitise_re
+    return first_sanitise_re.sub("", token.lower().strip())
 
 
 # Returns whether or not the string represents an integer.
@@ -45,12 +51,20 @@ def is_str_int(string):
 
 
 def search_by_name(tokens):
+    global bot_ending_re
+
     found = []
     for index, token in enumerate(tokens):
-        found.extend(robots.get_by_name(token))
-        if token == "bot":
-            for x in range(0, index):
-                found.extend(robots.get_by_name("".join(tokens[x:index])))
+        if "bot" in token:
+            stripped_token = bot_ending_re.sub("", token)
+
+            if stripped_token:
+                found.extend(robots.get_by_name(stripped_token))
+
+            if token in ("bot", "bots"):
+                for x in range(0, index):
+                    found.extend(robots.get_by_name("".join(tokens[x:index])))
+
     return list(dict.fromkeys(found))
 
 
