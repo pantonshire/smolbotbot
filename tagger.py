@@ -76,6 +76,8 @@ del robotfile
 
 robots = sorted(robots, key = lambda robot: int(robot[0]))
 
+input("Press enter to begin tagging")
+
 outputfile = open("data/robot-data.csv", "a")
 writer = csv.writer(outputfile, delimiter=",", quotechar='"', quoting=csv.QUOTE_ALL)
 

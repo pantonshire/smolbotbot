@@ -85,11 +85,11 @@ def robot_to_row(robot):
 
 def next_daily_robot():
     global shuffled_robots_daily, current_daily
-    robot = robots[shuffled_robots_daily[current_random]]
+    robot = robots[shuffled_robots_daily[current_daily]]
     current_daily += 1
     if current_daily >= len(shuffled_robots_daily):
         current_daily = 0
-        shuffled_robots_daily = random.shuffle(shuffled_robots_daily)
+        random.shuffle(shuffled_robots_daily)
     return robot
 
 
@@ -99,8 +99,45 @@ def next_random_robot():
     current_random += 1
     if current_random >= len(shuffled_robots_request):
         current_random = 0
-        shuffled_robots_request = random.shuffle(shuffled_robots_request)
+        random.shuffle(shuffled_robots_request)
     return robot
+
+
+def get_by_number(number):
+    global number_index
+    return number_index[number]
+
+
+def get_by_name(name):
+    global name_index
+    return name_index[name]
+
+
+def get_by_tag(tag):
+    global tag_index
+    return tag_index[tag]
+
+
+def get_by_mention(mention):
+    global mention_index
+    return mention_index[mention]
+
+
+def robot_data(position):
+    if position in range(0, len(robots)):
+        return robots[position]
+    return {}
+
+
+def link_to_robot_by_position(position):
+    if position in range(0, len(robots)):
+        return link_to_robot(robots[position])
+    return ""
+
+
+def link_to_robot(robot):
+    return "#" + str(robot["number"]) + " " + robot["name"] + ": " +\
+           "https://twitter.com/smolrobots/status/" + str(robot["tweet_id"])
 
 
 robots = []
