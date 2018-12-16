@@ -138,14 +138,14 @@ def robot_data(position):
     return {}
 
 
-def link_to_robot_by_position(position):
+def link_to_robot_by_position(position, include_number):
     if position in range(0, len(robots)):
-        return link_to_robot(robots[position])
+        return link_to_robot(robots[position], include_number)
     return ""
 
 
-def link_to_robot(robot):
-    return "#" + str(robot["number"]) + " " + robot["name"] + ": " +\
+def link_to_robot(robot, include_number):
+    return ("robot #" + str(robot["number"]) + ", " if include_number else "") + robot["name"] + ": " +\
            "https://twitter.com/smolrobots/status/" + str(robot["tweet_id"])
 
 
