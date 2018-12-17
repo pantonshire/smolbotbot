@@ -4,6 +4,7 @@ import search
 import twitter
 import schedule
 import time
+import random
 
 
 responded_tweets = []
@@ -28,17 +29,15 @@ saved_responded_dms.close()
 del saved_responded_dms
 print("Loaded responded dms: " + str(responded_dms))
 
-
-def morning_tweet():
-    tweet_next_robot("Morning")
+daily_bot_phrases = ["Good morning!", "Hello there!", "Beep boop!"]
 
 
-def afternoon_tweet():
-    tweet_next_robot("Afternoon")
-
-
-def tweet_next_robot(time_of_day):
-    print(time_of_day + "tweet")
+def tweet_next_robot():
+    global daily_bot_phrases
+    robot = robots.next_daily_robot()
+    name = robot["name"]
+    text = random.choice(daily_bot_phrases) + " Here\'s the random smol robot for " + time.strftime("%d/%m/%y") + ": " +\
+           name + "!" + "https://twitter.com/smolrobots/status/" + str(robot["tweet_id"])
 
 
 def check_new_robots():
@@ -111,11 +110,10 @@ def close_bot():
     print("Saved responded dm ids")
 
 
-schedule.every().day.at("07:00").do(morning_tweet)
-schedule.every().day.at("13:00").do(afternoon_tweet)
+schedule.every().day.at("07:00").do(tweet_next_robot)
 schedule.every().hour.do(check_new_robots)
-schedule.every().minute.do(check_direct_messages())
-schedule.every(15).seconds.do(check_tweets())
+schedule.every().minute.do(check_direct_messages)
+schedule.every(15).seconds.do(check_tweets)
 
 
 while True:
