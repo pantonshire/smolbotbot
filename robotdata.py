@@ -32,6 +32,8 @@ key_token_types = ["N", "J"]
 def generate_robot_data(tweet_text, tweet_id):
     global bot_intro_re, at_re, hashtag_re, stemmer, key_token_types, sanitise_expressions, polish_expressions
 
+    id_str = str(tweet_id)
+
     # Check if the tweet starts with the classic robot intro: number) name
     bot_intro = bot_intro_re.match(tweet_text)
     if not bot_intro:
@@ -56,12 +58,12 @@ def generate_robot_data(tweet_text, tweet_id):
 
     try:
         # Get the tweet page
-        page = urllib.request.urlopen("https://twitter.com/smolrobots/status/" + str(tweet_id))
+        page = urllib.request.urlopen("https://twitter.com/smolrobots/status/" + id_str)
         content = page.read()
         dom = BeautifulSoup(content, features="lxml")
 
         # Get the text, image src and image alt from the page
-        tweet_container = dom.body.find(class_="tweet", attrs={"data-associated-tweet-id": str(tweet_id)})
+        tweet_container = dom.body.find(class_="tweet", attrs={"data-associated-tweet-id": id_str})
         text = tweet_container.find(class_="tweet-text").text
         image = tweet_container.find(class_="AdaptiveMedia-container").find("img")
         src = image.get("src")
@@ -104,7 +106,7 @@ def generate_robot_data(tweet_text, tweet_id):
     mentionstr = " ".join(sorted(mentions))
     hashtagstr = " ".join(sorted(hashtags))
 
-    robot_data = [number, name, tweet_id, polished_text, src, polished_alt, tagstr, mentionstr, hashtagstr]
+    robot_data = [number, name, id_str, polished_text, src, polished_alt, tagstr, mentionstr, hashtagstr]
 
     # Add robot to list and lookup dictionaries
     robots.add_robot(robot_data)

@@ -8,7 +8,7 @@ def setup():
     # Load the robot data from the file
     robots_file = open("data/robot-data.csv", "r")
     reader = csv.reader(robots_file)
-    rows = [row for row in reader]
+    rows = [row for row in reader if row]
     robots_file.close()
     print("Loaded " + str(len(rows)) + " rows from csv file")
 
@@ -23,7 +23,7 @@ def add_robot(attributes):
 
     try:
         if len(attributes) != 9:
-            print("Invalid number of attributes supplied")
+            print("Invalid number of attributes supplied: " + str(attributes))
             return
 
         list_pos = len(robots)

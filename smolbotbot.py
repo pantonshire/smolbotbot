@@ -43,3 +43,4 @@ while True:
     time.sleep(1)
 
     # Todo: accept DM commands from @pantonshire
+    # Todo: make sure to check for retweets and whether or not the tweet actually comes from @smolrobots
