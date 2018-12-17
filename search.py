@@ -32,7 +32,7 @@ token_scores = {
 # Media should be removed from the query before it is passed into the function.
 # Mentions will be removed by the function.
 def search(query):
-    tokens = [token for token in tokenize(query) if token]
+    tokens = [token for token in tokenise(query) if token]
 
     by_name = search_by_name(tokens)
     if by_name:
@@ -55,9 +55,9 @@ def search(query):
     return "Temporary failure message :("
 
 
-# First pass tokenization of the query
+# First pass tokenisation of the query
 # Splits into tokens by whitespace and hyphens then removes punctuation.
-def tokenize(query):
+def tokenise(query):
     global hyphen_re
     cleaned = hyphen_re.sub(" ", query)
     cleaned = at_re.sub("", cleaned)

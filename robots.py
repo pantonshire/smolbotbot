@@ -132,6 +132,10 @@ def get_by_mention(mention):
     return mention_index[mention]
 
 
+def robot_exists(number, name):
+    return number in number_index and name in name_index
+
+
 def robot_data(position):
     if position in range(0, len(robots)):
         return robots[position]

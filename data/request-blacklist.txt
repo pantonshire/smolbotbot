@@ -43,6 +43,7 @@ don't
 down
 during
 each
+exactly
 few
 for
 from

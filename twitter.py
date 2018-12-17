@@ -1,40 +1,39 @@
 import tweepy
-import os
 import subprocess as sp
 import json
+import os
 import datetime as dt
 
-keyfile = open("data/.api", "rt")
-lines = [line.strip() for line in keyfile]
-keyfile.close()
+
+key_file = open("data/.api", "r")
+lines = [line.strip() for line in key_file]
+key_file.close()
 
 auth = tweepy.OAuthHandler(lines[0], lines[1])
 auth.set_access_token(lines[2], lines[3])
 
 del lines
-del keyfile
+del key_file
 
 api = tweepy.API(auth)
 
-bot_id = 1045382175091290113
-bot_id_str = str(bot_id)
-bot_account = api.get_user(bot_id)
+bot_id = "1045382175091290113"
 
 
-def tweet(text):
+def tweet(message):
     global api
     try:
-        api.update_status(text)
+        api.update_status(message)
     except tweepy.TweepError:
-        print("Failed to tweet: " + text)
+        print("Failed to tweet: " + message)
 
 
-def reply(replyto, text):
+def reply(reply_to_tweet, message):
     global api
     try:
-        api.update_status("@" + replyto.user.screen_name + " " + text, replyto.id)
+        api.update_status("@" + reply_to_tweet.user.screen_name + " " + message, reply_to_tweet.id)
     except tweepy.TweepError:
-        print("Failed to reply to " + replyto.user.name)
+        print("Failed to reply to " + reply_to_tweet.user.name)
 
 
 def mentions(count, max_seconds_ago, id_blacklist):
@@ -48,11 +47,12 @@ def recent_tweets(user, max_seconds_ago):
 
 
 def direct_messages(max_seconds_ago, id_blacklist):
+    global bot_id
     try:
         output = sp.run("/usr/local/bin/twurl -X GET /1.1/direct_messages/events/list.json".split(" "), stdout=sp.PIPE).stdout
         obj = json.loads(output.decode("utf-8"))
         messages = obj["events"]
-        return [message for message in messages if message["id"] not in id_blacklist and message["message_create"]["sender_id"] != bot_id_str and dt.datetime.now().timestamp() - (0.001 * float(message["created_timestamp"])) < max_seconds_ago]
+        return [message for message in messages if message["id"] not in id_blacklist and message["message_create"]["sender_id"] != bot_id and dt.datetime.now().timestamp() - (0.001 * float(message["created_timestamp"])) < max_seconds_ago]
     except:
         print("Error retrieving direct messages")
         return []
