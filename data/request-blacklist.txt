@@ -58,6 +58,8 @@ having
 he
 hello
 help
+helping
+helps
 helpful
 her
 here
@@ -81,6 +83,8 @@ itself
 just
 leg
 legs
+like
+likes
 lil
 little
 may
@@ -103,6 +107,7 @@ of
 off
 on
 once
+one
 only
 or
 other
@@ -113,6 +118,7 @@ out
 over
 own
 please
+request
 requestbot
 robot
 robots
@@ -151,6 +157,8 @@ under
 until
 up
 very
+want
+wants
 was
 wasn't
 we

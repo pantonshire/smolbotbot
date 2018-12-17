@@ -138,6 +138,12 @@ def robot_data(position):
     return {}
 
 
+def robot_name(position):
+    if position in range(0, len(robots)):
+        return robots[position]["name"]
+    return ""
+
+
 def link_to_robot_by_position(position, include_number):
     if position in range(0, len(robots)):
         return link_to_robot(robots[position], include_number)

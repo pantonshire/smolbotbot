@@ -1,5 +1,4 @@
 import robots
-import thesaurus
 import nltk
 import re
 import random
@@ -69,7 +68,8 @@ def tokenize(query):
 # Sanitise the token by converting it to lowercase and removing any trailing whitespace.
 def sanitise_token(token):
     global sanitise_re
-    return sanitise_re.sub("", token.lower().strip())
+    cleaned = token.lower().strip().replace("’", "'")
+    return sanitise_re.sub("", cleaned)
 
 
 # Returns whether or not the string represents an integer.
