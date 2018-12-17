@@ -16,6 +16,13 @@ def setup():
         add_robot(row)
 
 
+def reload():
+    global robots
+    robots.clear()
+    setup()
+    return len(robots)
+
+
 # Adds the robot to the robots list and all of the secondary-key indexes.
 def add_robot(attributes):
     global robots, shuffled_robots_daily, shuffled_robots_request,\

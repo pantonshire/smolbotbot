@@ -53,7 +53,7 @@ def search(query):
     if by_tags:
         return robot_list_result(by_tags)
 
-    return "Temporary failure message :("
+    return "Sorry, I couldn\'t find the robot you\'re looking for. This might be because the robot isn\'t indexed yet, or because your request is too complicated for me."
 
 
 # First pass tokenisation of the query

@@ -38,14 +38,14 @@ def reply(reply_to_tweet, message):
 
 def mentions(count, max_seconds_ago, id_blacklist):
     global api
-    return [mention for mention in api.mentions_timeline(count=count)
+    return [mention for mention in api.mentions_timeline(count=count, tweet_mode="extended")
             if not mention.id in id_blacklist and (dt.datetime.now() - mention.created_at).seconds < max_seconds_ago]
 
 
 def recent_tweets(user, max_seconds_ago):
     global api
     return [(tweet.retweeted_status if hasattr(tweet, "retweeted_status") else tweet)
-            for tweet in api.user_timeline("@" + user)
+            for tweet in api.user_timeline("@" + user, tweet_mode="extended")
             if tweet.user.screen_name == user and (dt.datetime.now() - tweet.created_at).seconds < max_seconds_ago]
 
 

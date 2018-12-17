@@ -9,6 +9,8 @@ import time
 responded_tweets = []
 responded_dms = []
 
+admin_ids = ["4494622517"]
+
 saved_responded_tweets = open("state/responded-tweets.txt", "r")
 for tweet_id in saved_responded_tweets:
     try:
@@ -21,10 +23,7 @@ print("Loaded responded tweets: " + str(responded_tweets))
 
 saved_responded_dms = open("state/responded-dms", "r")
 for dm_id in saved_responded_dms:
-    try:
-        responded_dms.append(int(dm_id.strip()))
-    except ValueError:
-        continue
+    responded_dms.append(dm_id.strip()) # DM ids are stored as strings for convenience
 saved_responded_dms.close()
 del saved_responded_dms
 print("Loaded responded dms: " + str(responded_dms))
@@ -34,7 +33,7 @@ def morning_tweet():
     tweet_next_robot("Morning")
 
 
-def noon_tweet():
+def afternoon_tweet():
     tweet_next_robot("Afternoon")
 
 
@@ -46,16 +45,54 @@ def check_new_robots():
     recent_tweets = twitter.recent_tweets("smolrobots", 10800)
     print(str(len(recent_tweets)) + " recent tweets found from @smolrobots, looking for new robots")
     for tweet in recent_tweets:
-        if robotdata.generate_robot_data(tweet.text, tweet.id):
+        if robotdata.generate_robot_data(tweet.full_text, tweet.id):
             print("Registered a new robot")
 
 
 def check_tweets():
-    print("Check tweets")
+    global responded_tweets
+    mentions = twitter.mentions(20, 10800, responded_tweets)
+    for mention in mentions:
+        search_result = search.search(mention.full_text)
+        twitter.reply(mention, search_result)
+        print("Sent a reply")
+
+        responded_tweets.append(mention.id)
+        if len(responded_tweets) > 20:
+            responded_tweets = responded_tweets[1:]
 
 
 def check_direct_messages():
-    print("Check DMs")
+    global responded_dms, admin_ids
+    dms = twitter.direct_messages(7200, responded_dms)
+    for dm in dms:
+        text = dm["message_create"]["message_data"]["text"]
+        sender_id = dm["message_create"]["sender_id"]
+
+        response = ""
+
+        if sender_id in admin_ids and text.startswith("$"):
+            response = do_command(text[1:].strip())
+
+        else:
+            response = search.search(text).replace("\'", "’").replace("\"", "”")
+
+        if twitter.send_direct_message(sender_id, response):
+            responded_dms.append(dm["id"])
+            print("Sent a DM")
+
+            responded_dms.append(dm["id"])
+            if len(responded_dms) > 20:
+                responded_dms = responded_dms[1:]
+        else:
+            print("DM failed to " + sender_id)
+
+
+def do_command(command):
+    if command == "reloadrobots":
+        loaded = robots.reload()
+        return "Loaded " + str(loaded) + " robots"
+    return "Unrecognised command"
 
 
 def close_bot():
@@ -69,13 +106,13 @@ def close_bot():
 
     dms_file = open("state/responded-dms", "w")
     for dm_id in responded_dms:
-        dms_file.write(str(dm_id))
+        dms_file.write(dm_id)
     dms_file.close()
     print("Saved responded dm ids")
 
 
 schedule.every().day.at("07:00").do(morning_tweet)
-schedule.every().day.at("12:00").do(noon_tweet)
+schedule.every().day.at("13:00").do(afternoon_tweet)
 schedule.every().hour.do(check_new_robots)
 schedule.every().minute.do(check_direct_messages())
 schedule.every(15).seconds.do(check_tweets())
@@ -91,8 +128,5 @@ while True:
         break
     except:
         print("An uncaught error occurred in schedule loop")
-
-    # Todo: accept DM commands from @pantonshire
-    # Todo: make sure to check for retweets and whether or not the tweet actually comes from @smolrobots
 
 print("Goodbye!")
