@@ -22,6 +22,7 @@ plural_re = re.compile("s$")
 stemmer = nltk.stem.PorterStemmer()
 
 token_scores = {
+    "BOT": 10.0,
     "JJ": 8.0, "JJR": 8.0, "JJS": 8.0,
     "NN": 10.0, "NNS": 10.0,
     "VB": 5.0, "VBD": 5.0, "VBG": 5.0, "VBN": 5.0, "VBP": 5.0, "VBZ": 5.0,
@@ -84,7 +85,7 @@ def is_str_int(string):
 # Searches for a robot's name in the given tokens. Returns the positions of the robots whose
 # names were found.
 def search_by_name(tokens):
-    global bot_ending_re
+    global bot_ending_re, plural_re
 
     found = []
     for index, token in enumerate(tokens):
@@ -94,6 +95,7 @@ def search_by_name(tokens):
             if stripped_token:
                 found.extend(robots.get_by_name(stripped_token))
                 found.extend(robots.get_by_name(stripped_token + "s"))
+                found.extend(robots.get_by_name(plural_re.sub("", stripped_token)))
 
             if token in ("bot", "bots"):
                 for x in range(0, index):
@@ -113,16 +115,20 @@ def search_by_number(tokens):
 
 
 def search_by_tags(tokens):
-    global stemmer, blacklist
+    global stemmer, blacklist, bot_ending_re
 
     print("Searching by tags")
     print("Input tokens:")
     print(tokens)
 
-    stemmed_tokens = [stemmer.stem(token) for token in tokens]
-    tagged_tokens = [(token_data[0], stemmed_tokens[index], token_data[1])
-                     for index, token_data in enumerate(nltk.pos_tag(tokens))]
-    allowed_tagged_tokens = [token_data for token_data in tagged_tokens if token_data[0] not in blacklist]
+    tagged_tokens = nltk.pos_tag(tokens)
+    for index, token_data in enumerate(tagged_tokens):
+        token = token_data[0]
+        if bot_ending_re.search(token):
+            tagged_tokens[index] = (bot_ending_re.sub("", token), "BOT")
+
+    tagged_tokens = [(token_data[0], stemmer.stem(token_data[0]), token_data[1]) for token_data in tagged_tokens]
+    allowed_tagged_tokens = [token_data for token_data in tagged_tokens if token_data[0] not in blacklist or token_data[1] == "BOT"]
 
     print("Tagged tokens:")
     print(tagged_tokens)
