@@ -19,7 +19,7 @@ def setup():
 # Adds the robot to the robots list and all of the secondary-key indexes.
 def add_robot(attributes):
     global robots, shuffled_robots_daily, shuffled_robots_request,\
-        number_index, name_index, tag_index, mention_index
+        number_index, name_index, tag_index, mention_index, bot_suffix_re
 
     try:
         if len(attributes) != 9:
@@ -50,7 +50,7 @@ def add_robot(attributes):
 
         number_index[robot_number].append(list_pos)
 
-        index_name = re.sub("bot(s)?$", "", robot_name.lower())
+        index_name = bot_suffix_re.sub("", robot_name.lower())
         name_index[index_name].append(list_pos)
 
         for tag in robot_tags:
@@ -133,7 +133,8 @@ def get_by_mention(mention):
 
 
 def robot_exists(number, name):
-    return number in number_index and name in name_index
+    global bot_suffix_re
+    return number in number_index and bot_suffix_re.sub("", name.lower()) in name_index
 
 
 def robot_data(position):
@@ -169,5 +170,7 @@ mention_index = defaultdict(list)
 
 current_daily = 0
 current_random = 0
+
+bot_suffix_re = re.compile("bot(s)?$")
 
 setup()

@@ -6,7 +6,8 @@ import nltk
 from bs4 import BeautifulSoup
 
 
-bot_intro_re = re.compile("(\s*\-?\d+\)\s+[\w\-]+bot(?=\w*\W))")
+bot_intro_lookahead_re = re.compile("(\s*\-?\d+\)\s+[\w\-]+bot(?=\w*\W))")
+bot_intro_re = re.compile("(\s*\-?\d+\)\s+[\w\-]+bot\w*\W)")
 at_re = re.compile("(?<=^|(?<=[^a-zA-Z0-9-\.]))@[A-Za-z_]+[A-Za-z0-9_]+")
 hashtag_re = re.compile("(?<=^|(?<=[^a-zA-Z0-9-\.]))#[A-Za-z_]+[A-Za-z0-9_]+")
 picture_re = re.compile("pic\.twitter\.com/\S+")
@@ -30,12 +31,12 @@ key_token_types = ["N", "J"]
 
 
 def generate_robot_data(tweet_text, tweet_id):
-    global bot_intro_re, at_re, hashtag_re, stemmer, key_token_types, sanitise_expressions, polish_expressions
+    global bot_intro_lookahead_re, at_re, hashtag_re, stemmer, key_token_types, sanitise_expressions, polish_expressions
 
     id_str = str(tweet_id)
 
     # Check if the tweet starts with the classic robot intro: number) name
-    bot_intro = bot_intro_re.match(tweet_text)
+    bot_intro = bot_intro_lookahead_re.match(tweet_text)
     if not bot_intro:
         return False
 
