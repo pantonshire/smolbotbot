@@ -7,10 +7,13 @@ import time
 import random
 
 
+running = True
+
 responded_tweets = []
 responded_dms = []
 
 admin_ids = ["4494622517"]
+
 
 saved_responded_tweets = open("state/responded-tweets.txt", "r")
 for tweet_id in saved_responded_tweets:
@@ -22,15 +25,16 @@ saved_responded_tweets.close()
 del saved_responded_tweets
 print("Loaded responded tweets: " + str(responded_tweets))
 
-saved_responded_dms = open("state/responded-dms", "r")
+saved_responded_dms = open("state/responded-dms.txt", "r")
 for dm_id in saved_responded_dms:
     responded_dms.append(dm_id.strip()) # DM ids are stored as strings for convenience
 saved_responded_dms.close()
 del saved_responded_dms
 print("Loaded responded dms: " + str(responded_dms))
 
-greeting_phrases = ["Good morning!", "Hello there!", "Morning, all!"]
-introduction_phrases = ["Here\'s today\'s small robot,", "Today\'s small robot is", "Here\'s the small robot of the day,"]
+
+greeting_phrases = [""]
+introduction_phrases = [""]
 
 
 def tweet_next_robot():
@@ -93,10 +97,35 @@ def check_direct_messages():
 
 
 def do_command(command):
-    if command == "reloadrobots":
+    global running
+    if command == "ldrobots":
         loaded = robots.reload()
         return "Loaded " + str(loaded) + " robots"
+    elif command == "ldphrases":
+        load_phrases()
+        return "Reloaded phrases"
+    elif command == "stop":
+        running = False
+        return "Stopping at end current loop"
     return "Unrecognised command"
+
+
+def load_phrases():
+    global greeting_phrases, introduction_phrases
+
+    greetings_file = open("data/greetings.txt", "r")
+    greeting_phrases = [line.strip() for line in greetings_file]
+    greetings_file.close()
+
+    if not greeting_phrases:
+        greeting_phrases = ["[INTERNAL ERROR]"]
+
+    intros_file = open("data/botd-intros.txt", "r")
+    introduction_phrases = [line.strip() for line in intros_file]
+    intros_file.close()
+
+    if not introduction_phrases:
+        introduction_phrases = ["[INTERNAL ERROR]"]
 
 
 def close_bot():
@@ -108,28 +137,32 @@ def close_bot():
     tweets_file.close()
     print("Saved responded tweet ids")
 
-    dms_file = open("state/responded-dms", "w")
+    dms_file = open("state/responded-dms.txt", "w")
     for dm_id in responded_dms:
         dms_file.write(dm_id)
     dms_file.close()
     print("Saved responded dm ids")
 
 
-schedule.every().day.at("07:00").do(tweet_next_robot)
-schedule.every().hour.do(check_new_robots)
-schedule.every().minute.do(check_direct_messages)
-schedule.every(15).seconds.do(check_tweets)
+load_phrases()
+
+# schedule.every().day.at("07:00").do(tweet_next_robot)
+# schedule.every().hour.do(check_new_robots)
+# schedule.every().minute.do(check_direct_messages)
+# schedule.every(15).seconds.do(check_tweets)
+
+schedule.every(10).seconds.do(tweet_next_robot)
 
 
-while True:
+while running:
     try:
         time.sleep(1)
         schedule.run_pending()
     except KeyboardInterrupt:
         print("Keyboard interrupt, stopping")
-        close_bot()
         break
     except:
         print("An uncaught error occurred in schedule loop")
 
+close_bot()
 print("Goodbye!")
