@@ -29,15 +29,20 @@ saved_responded_dms.close()
 del saved_responded_dms
 print("Loaded responded dms: " + str(responded_dms))
 
-daily_bot_phrases = ["Good morning!", "Hello there!", "Beep boop!"]
+greeting_phrases = ["Good morning!", "Hello there!", "Morning, all!"]
+introduction_phrases = ["Here\'s today\'s small robot,", "Today\'s small robot is", "Here\'s the small robot of the day,"]
 
 
 def tweet_next_robot():
-    global daily_bot_phrases
+    global greeting_phrases, introduction_phrases
     robot = robots.next_daily_robot()
     name = robot["name"]
-    text = random.choice(daily_bot_phrases) + " Here\'s the random smol robot for " + time.strftime("%d/%m/%y") + ": " +\
-           name + "!" + "https://twitter.com/smolrobots/status/" + str(robot["tweet_id"])
+    date = time.strftime("%d/%m/%y")
+    greeting = random.choice(greeting_phrases)
+    introduction = random.choice(introduction_phrases)
+    link = "https://twitter.com/smolrobots/status/" + str(robot["tweet_id"])
+    text = date + "\n" + greeting + " " + introduction + " " + name + "!" + link
+    print(text)
 
 
 def check_new_robots():
