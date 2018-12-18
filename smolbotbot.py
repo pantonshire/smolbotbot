@@ -46,7 +46,7 @@ def tweet_next_robot():
     introduction = random.choice(introduction_phrases)
     link = "https://twitter.com/smolrobots/status/" + str(robot["tweet_id"])
     text = date + "\n" + greeting + " " + introduction + " " + name + "!" + link
-    print(text)
+    twitter.tweet(text)
 
 
 def check_new_robots():
@@ -146,12 +146,10 @@ def close_bot():
 
 load_phrases()
 
-# schedule.every().day.at("07:00").do(tweet_next_robot)
-# schedule.every().hour.do(check_new_robots)
-# schedule.every().minute.do(check_direct_messages)
-# schedule.every(15).seconds.do(check_tweets)
-
-schedule.every(10).seconds.do(tweet_next_robot)
+schedule.every().day.at("07:00").do(tweet_next_robot)
+schedule.every().hour.do(check_new_robots)
+schedule.every().minute.do(check_direct_messages)
+schedule.every(15).seconds.do(check_tweets)
 
 
 while running:
