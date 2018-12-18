@@ -92,11 +92,11 @@ def generate_robot_data(tweet_text, tweet_id):
     text_tokens = classify(tokenise(sanitised_text))
     alt_tokens = classify(tokenise(sanitised_alt))
     all_tokens = text_tokens + alt_tokens
-    tags = [clean_token(token[0]) for token in all_tokens if token[1][0] in key_token_types]
+    tags = [clean_token(token[0]) for token in all_tokens if token[1][0] in key_token_types and len(token) > 1]
 
     # Stem tags and check if they are valid words when stemmed
     stemmed = [stemmer.stem(tag) for tag in tags]
-    valid_stemmed = [tag for tag in stemmed if is_valid_word(tag)]
+    valid_stemmed = [tag for tag in stemmed if is_valid_word(tag) and len(tag) > 1]
     tags.extend(valid_stemmed)
 
     # Remove duplicates

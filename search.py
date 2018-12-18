@@ -122,10 +122,11 @@ def search_by_tags(tokens):
     print(tokens)
 
     tagged_tokens = nltk.pos_tag(tokens)
-    for index, token_data in enumerate(tagged_tokens):
-        token = token_data[0]
-        if bot_ending_re.search(token):
-            tagged_tokens[index] = (bot_ending_re.sub("", token), "BOT")
+
+    tagged_tokens.extend([
+        (bot_ending_re.sub("", token_data[0]), "BOT") for token_data in tagged_tokens
+        if bot_ending_re.search(token_data[0])
+    ])
 
     tagged_tokens = [(token_data[0], stemmer.stem(token_data[0]), token_data[1]) for token_data in tagged_tokens]
     allowed_tagged_tokens = [token_data for token_data in tagged_tokens if token_data[0] not in blacklist or token_data[1] == "BOT"]
@@ -253,11 +254,11 @@ def is_thanking(tokens):
 
 
 def robot_list_result(positions):
-    top_five = positions[0:5]
-    results_text = "\n".join([robots.link_to_robot_by_position(position, True) for position in top_five])
-    if len(top_five) > 2:
+    top_results = positions[0:4]
+    results_text = "\n".join([robots.link_to_robot_by_position(position, True) for position in top_results])
+    if len(top_results) > 2:
         return "I found a few different robots:\n" + results_text
-    if len(top_five) > 1:
+    if len(top_results) > 1:
         return "I found a couple of robots:\n" + results_text
     return "I found " + results_text
 

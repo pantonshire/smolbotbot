@@ -163,7 +163,7 @@ def link_to_robot_by_position(position, include_number):
 
 
 def link_to_robot(robot, include_number):
-    return ("robot no." + str(robot["number"]) + ", " if include_number else "") + robot["name"] + ": " +\
+    return ("no. " + str(robot["number"]) + ", " if include_number else "") + robot["name"] + ": " +\
            "https://twitter.com/smolrobots/status/" + str(robot["tweet_id"])
 
 
