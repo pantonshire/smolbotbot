@@ -12,3 +12,4 @@
 - A few different admin commands may be now be supplied to the robot via direct messages.
 - Robots are now indexed in dictionaries by name, number, tags and mentions for quick lookups.
 - Replied tweet and DM ids are now saved to disk so that restarting does not cause the bot to re-reply to recent requests.
+- Tweets and DMs containing the word "ignore" in parentheses, along with any other characters inside the parentheses, will now be ignored by the bot.

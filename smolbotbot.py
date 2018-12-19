@@ -5,6 +5,7 @@ import twitter
 import schedule
 import time
 import random
+import re
 
 
 running = True
@@ -37,6 +38,9 @@ greeting_phrases = [""]
 introduction_phrases = [""]
 
 
+ignore_re = re.compile("\([^\(]*ignore[^\)]*\)")
+
+
 def tweet_next_robot():
     global greeting_phrases, introduction_phrases
     robot = robots.next_daily_robot()
@@ -59,12 +63,16 @@ def check_new_robots():
 
 def check_tweets():
     global responded_tweets
-    mentions = twitter.mentions(20, 10800, responded_tweets)
-    for mention in mentions:
-        search_result = search.search(mention.full_text)
-        twitter.reply(mention, search_result)
-        print("Sent a reply")
 
+    # Get the 20 most recent mentions, a maximum of 3 hours ago. Responded mentions are blacklisted
+    mentions = twitter.mentions(20, 10800, responded_tweets)
+
+    for mention in mentions:
+        text = mention.full_text
+        if should_respond(text):
+            search_result = search.search(text)
+            twitter.reply(mention, search_result)
+            print("Sent a reply")
         responded_tweets.append(mention.id)
         if len(responded_tweets) > 20:
             responded_tweets = responded_tweets[1:]
@@ -72,28 +80,37 @@ def check_tweets():
 
 def check_direct_messages():
     global responded_dms, admin_ids
+
     dms = twitter.direct_messages(7200, responded_dms)
+
     for dm in dms:
         text = dm["message_create"]["message_data"]["text"]
         sender_id = dm["message_create"]["sender_id"]
 
-        response = ""
+        should_blacklist = False
 
-        if sender_id in admin_ids and text.startswith("$"):
-            response = do_command(text[1:].strip())
+        if should_respond(text):
+            response = ""
 
+            if sender_id in admin_ids and text.startswith("$"):
+                response = do_command(text[1:].strip())
+
+            else:
+                response = search.search(text).replace("\'", "’").replace("\"", "”")
+
+            if twitter.send_direct_message(sender_id, response):
+                responded_dms.append(dm["id"])
+                print("Sent a DM")
+                should_blacklist = True
+            else:
+                print("DM failed to " + sender_id)
         else:
-            response = search.search(text).replace("\'", "’").replace("\"", "”")
+            should_blacklist = True
 
-        if twitter.send_direct_message(sender_id, response):
-            responded_dms.append(dm["id"])
-            print("Sent a DM")
-
+        if should_blacklist:
             responded_dms.append(dm["id"])
             if len(responded_dms) > 20:
                 responded_dms = responded_dms[1:]
-        else:
-            print("DM failed to " + sender_id)
 
 
 def do_command(command):
@@ -108,6 +125,11 @@ def do_command(command):
         running = False
         return "Stopping at end current loop"
     return "Unrecognised command"
+
+
+def should_respond(query):
+    global ignore_re
+    return not ignore_re.search(query)
 
 
 def load_phrases():
