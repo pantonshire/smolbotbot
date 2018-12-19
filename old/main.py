@@ -1,4 +1,4 @@
-import botlookup as search
+from old import botlookup as search
 import twitter
 import codecs
 import time

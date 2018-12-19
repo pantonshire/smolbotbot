@@ -1,10 +1,7 @@
-import botlookup as search
+from old import botlookup as search
 import twitter
 print("> Logged in")
 import codecs
-import time
-import re
-import tweepy
 
 print("> Loading robots from old-robot-table.csv")
 robotfile = codecs.open("old-robot-table.csv", "r", "utf-8")
