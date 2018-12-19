@@ -1,13 +1,6 @@
-from old import botlookup as search
+import search
 import twitter
 print("> Logged in")
-import codecs
-
-print("> Loading robots from old-robot-table.csv")
-robotfile = codecs.open("old-robot-table.csv", "r", "utf-8")
-robots = [tuple(line.strip().split(",")) for line in robotfile]
-robotfile.close()
-print("> Loaded " + str(len(robots)) + " robots")
 
 print("> Retrieving direct messages from last 24 hours")
 dms = twitter.direct_messages(86400, [])
@@ -28,6 +21,6 @@ while True:
    if q.strip().lower() == "exit":
       break
    else:
-      print("[R] " + search.search(robots, q))
+      print("[R] " + search.search(q))
 
 print("> Test complete")
