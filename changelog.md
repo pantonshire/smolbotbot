@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 2.0.1
+- Fixed an issue in which responded tweet and dm ids were written to a single line in their respective text files.
+
 ## Version 2.0.0
 - Improved robot data collection algorithm. The image URL, image alt text, mentions and hashtags are now collected and stored.
 - Tags are now generated for each robot, based on nouns and adjectives appearing in the text and alt text.
