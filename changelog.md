@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 2.0.2
+- Increased the maximum size of the blacklist lists from 20 items to 1024 items.
+- The date and time of sending a tweet or direct message is now written to a log file.
+
 ## Version 2.0.1
 - Fixed an issue in which responded tweet and dm ids were written to a single line in their respective text files.
 
