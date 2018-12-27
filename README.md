@@ -18,7 +18,7 @@ If you want to make a contribution, feel free to submit a pull request.
 ## Installing
 
 ## Changelog
-[The changelog can be found here](https://github.com/Pantonshire/SmolBotBot/blob/master/changelog.md). I try to update it whenever I add or change something, but it may sometimes be a bit behind!
+[The changelog can be found here](https://github.com/Pantonshire/SmolBotBot/blob/master/changelog.md#changelog). I try to update it whenever I add or change something, but it may sometimes be a bit behind!
 
 ## Dependencies
 - [Twurl](https://github.com/twitter/twurl)
