@@ -29,7 +29,9 @@ print("Loaded responded tweets: " + str(responded_tweets))
 
 saved_responded_dms = open("state/responded-dms.txt", "r")
 for dm_id in saved_responded_dms:
-    responded_dms.append(dm_id.strip()) # DM ids are stored as strings for convenience
+    dm_id_stripped = dm_id.strip()
+    if dm_id_stripped:
+        responded_dms.append(dm_id_stripped) # DM ids are stored as strings for convenience
 saved_responded_dms.close()
 del saved_responded_dms
 print("Loaded responded dms: " + str(responded_dms))
@@ -156,13 +158,13 @@ def close_bot():
 
     tweets_file = open("state/responded-tweets.txt", "w")
     for tweet_id in responded_tweets:
-        tweets_file.write(str(tweet_id))
+        tweets_file.write(str(tweet_id) + "\n")
     tweets_file.close()
     log.log("Saved responded tweet ids")
 
     dms_file = open("state/responded-dms.txt", "w")
     for dm_id in responded_dms:
-        dms_file.write(dm_id)
+        dms_file.write(dm_id + "\n")
     dms_file.close()
     log.log("Saved responded dm ids")
 
