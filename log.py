@@ -18,8 +18,9 @@ def write(message):
 
 def flush():
     global lines, log_path
-    file = open(log_path, "a")
-    for line in lines:
-        file.write(line)
-    file.close()
-    lines = []
+    if lines:
+        file = open(log_path, "a")
+        for line in lines:
+            file.write(line)
+        file.close()
+        lines = []

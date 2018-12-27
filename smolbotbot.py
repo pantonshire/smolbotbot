@@ -185,6 +185,7 @@ while running:
     try:
         time.sleep(1)
         schedule.run_pending()
+        log.flush()
     except KeyboardInterrupt:
         log.log("Keyboard interrupt, stopping")
         break
