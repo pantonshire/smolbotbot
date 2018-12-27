@@ -21,6 +21,6 @@ def flush():
     if lines:
         file = open(log_path, "a")
         for line in lines:
-            file.write(line)
+            file.write(line + "\n")
         file.close()
         lines = []

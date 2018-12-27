@@ -77,7 +77,7 @@ def check_tweets():
             twitter.reply(mention, search_result)
             log.log("Tweet @" + mention.user.screen_name + ":" + str(mention.id))
         responded_tweets.append(mention.id)
-        if len(responded_tweets) > 1000:
+        if len(responded_tweets) > 1024:
             responded_tweets = responded_tweets[1:]
 
 
@@ -112,7 +112,7 @@ def check_direct_messages():
 
         if should_blacklist:
             responded_dms.append(dm["id"])
-            if len(responded_dms) > 1000:
+            if len(responded_dms) > 1024:
                 responded_dms = responded_dms[1:]
 
 
