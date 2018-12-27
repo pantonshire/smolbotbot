@@ -13,7 +13,7 @@ def log(message):
 
 def write(message):
     global lines
-    lines += message
+    lines.append(message)
 
 
 def flush():
@@ -23,4 +23,4 @@ def flush():
         for line in lines:
             file.write(line + "\n")
         file.close()
-        lines = []
+        lines.clear()
