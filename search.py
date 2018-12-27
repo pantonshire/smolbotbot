@@ -152,7 +152,7 @@ def search_by_tags(tokens):
         score = get_token_score(token_data[2]) * 2
 
         for result in name_results:
-            print(str(result) + " scored " + str(score))
+            #print(str(result) + " scored " + str(score))
             add_score(scores, result, score)
 
     compound_name_score = 20.0

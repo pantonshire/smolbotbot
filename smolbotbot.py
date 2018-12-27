@@ -2,6 +2,7 @@ import robots
 import robotdata
 import search
 import twitter
+import log
 import schedule
 import time
 import random
@@ -72,9 +73,9 @@ def check_tweets():
         if should_respond(text):
             search_result = search.search(text)
             twitter.reply(mention, search_result)
-            print("Sent a reply")
+            log.log("Tweet @" + mention.user.screen_name + ":" + str(mention.id))
         responded_tweets.append(mention.id)
-        if len(responded_tweets) > 20:
+        if len(responded_tweets) > 1000:
             responded_tweets = responded_tweets[1:]
 
 
@@ -100,16 +101,16 @@ def check_direct_messages():
 
             if twitter.send_direct_message(sender_id, response):
                 responded_dms.append(dm["id"])
-                print("Sent a DM")
+                log.log("DM @" + sender_id + ":" + dm["id"])
                 should_blacklist = True
             else:
-                print("DM failed to " + sender_id)
+                log.log("DM @" + sender_id + ":" + dm["id"] + " failed")
         else:
             should_blacklist = True
 
         if should_blacklist:
             responded_dms.append(dm["id"])
-            if len(responded_dms) > 20:
+            if len(responded_dms) > 1000:
                 responded_dms = responded_dms[1:]
 
 
@@ -157,13 +158,15 @@ def close_bot():
     for tweet_id in responded_tweets:
         tweets_file.write(str(tweet_id))
     tweets_file.close()
-    print("Saved responded tweet ids")
+    log.log("Saved responded tweet ids")
 
     dms_file = open("state/responded-dms.txt", "w")
     for dm_id in responded_dms:
         dms_file.write(dm_id)
     dms_file.close()
-    print("Saved responded dm ids")
+    log.log("Saved responded dm ids")
+
+    log.log("Stopping")
 
 
 load_phrases()
@@ -174,15 +177,17 @@ schedule.every().minute.do(check_direct_messages)
 schedule.every(15).seconds.do(check_tweets)
 
 
+log.log("Starting")
+
 while running:
     try:
         time.sleep(1)
         schedule.run_pending()
     except KeyboardInterrupt:
-        print("Keyboard interrupt, stopping")
+        log.log("Keyboard interrupt, stopping")
         break
     except:
-        print("An uncaught error occurred in schedule loop")
+        log.log("An uncaught error occurred in schedule loop")
 
 close_bot()
 print("Goodbye!")
