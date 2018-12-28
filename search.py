@@ -266,4 +266,4 @@ def robot_list_result(positions):
 
 def random_result():
     next_random_robot = robots.next_random_robot()
-    return "Here\'s you\'re randomly chosen robot, " + robots.link_to_robot(next_random_robot, False)
+    return "Here\'s your randomly chosen robot, " + robots.link_to_robot(next_random_robot, False)
