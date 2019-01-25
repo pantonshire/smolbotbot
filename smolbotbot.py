@@ -101,8 +101,9 @@ def check_direct_messages():
             else:
                 response = search.search(text).replace("\'", "’").replace("\"", "”")
 
+            response = response.replace("\n", " ")
+
             if twitter.send_direct_message(sender_id, response):
-                responded_dms.append(dm["id"])
                 log.log("DM @" + sender_id + ":" + dm["id"])
                 should_blacklist = True
             else:
