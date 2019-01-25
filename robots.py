@@ -1,3 +1,4 @@
+import log
 import csv
 import random
 import re
@@ -10,7 +11,7 @@ def setup():
     reader = csv.reader(robots_file)
     rows = [row for row in reader if row]
     robots_file.close()
-    print("Loaded " + str(len(rows)) + " rows from csv file")
+    log.log("Loaded " + str(len(rows)) + " rows from csv file")
 
     for row in rows:
         add_robot(row)
@@ -69,8 +70,7 @@ def add_robot(attributes):
             mention_index[index_mention].append(list_pos)
 
     except ValueError:
-        print("Invalid data supplied:")
-        print(attributes)
+        log.log_error("Invalid data supplied: " + str(attributes))
         return
 
 

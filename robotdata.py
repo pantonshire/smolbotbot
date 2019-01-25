@@ -1,4 +1,5 @@
 import robots
+import log
 import re
 import urllib.request
 import urllib.error
@@ -71,10 +72,11 @@ def generate_robot_data(tweet_text, tweet_id):
         alt = image.get("alt")
 
     except urllib.error.HTTPError:
+        log.log_error("HTTP error when getting page for robot with id " + id_str)
         return False
 
     except AttributeError:
-        print("AttributeError was raised while retrieving elements from dom")
+        log.log_error("Error parsing robot page with id " + id_str)
         pass # Do not return false if an element was not found; some data may still be available
 
     # Sanitise the description and alt text

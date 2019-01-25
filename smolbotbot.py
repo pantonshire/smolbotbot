@@ -190,7 +190,7 @@ while running:
         log.log("Keyboard interrupt, stopping")
         break
     except:
-        log.log("An uncaught error occurred in schedule loop")
+        log.log_error("An uncaught error occurred in schedule loop")
 
 close_bot()
 print("Goodbye!")

@@ -1,3 +1,5 @@
+import log
+import log
 import tweepy
 import subprocess as sp
 import json
@@ -25,7 +27,7 @@ def tweet(message):
     try:
         api.update_status(message)
     except tweepy.TweepError:
-        print("Failed to tweet: " + message)
+        log.log_error("Failed to tweet: " + message)
 
 
 def reply(reply_to_tweet, message):
@@ -33,7 +35,7 @@ def reply(reply_to_tweet, message):
     try:
         api.update_status("@" + reply_to_tweet.user.screen_name + " " + message, reply_to_tweet.id)
     except tweepy.TweepError:
-        print("Failed to reply to " + reply_to_tweet.user.name)
+        log.log_error("Failed to reply to " + reply_to_tweet.user.name)
 
 
 def mentions(count, max_seconds_ago, id_blacklist):
@@ -69,6 +71,6 @@ def send_direct_message(user_id, message):
         command = '/usr/local/bin/twurl -A \'Content-type: application/json\' -X POST /1.1/direct_messages/events/new.json -d\'{"event": {"type": "message_create", "message_create": {"target": {"recipient_id": "' + user_id + '"}, "message_data": {"text": "' + message + '"}}}}\''
         return os.system(command) == 0
     except:
-        print("Failed to send direct message to " + user_id)
+        log.log_error("Failed to send direct message to " + user_id)
         return False
    
