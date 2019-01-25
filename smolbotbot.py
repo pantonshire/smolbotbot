@@ -25,7 +25,7 @@ for tweet_id in saved_responded_tweets:
         continue
 saved_responded_tweets.close()
 del saved_responded_tweets
-print("Loaded responded tweets: " + str(responded_tweets))
+log.log("Loaded responded tweets: " + str(responded_tweets))
 
 saved_responded_dms = open("state/responded-dms.txt", "r")
 for dm_id in saved_responded_dms:
@@ -34,7 +34,7 @@ for dm_id in saved_responded_dms:
         responded_dms.append(dm_id_stripped) # DM ids are stored as strings for convenience
 saved_responded_dms.close()
 del saved_responded_dms
-print("Loaded responded dms: " + str(responded_dms))
+log.log("Loaded responded dms: " + str(responded_dms))
 
 
 greeting_phrases = [""]
@@ -58,10 +58,10 @@ def tweet_next_robot():
 
 def check_new_robots():
     recent_tweets = twitter.recent_tweets("smolrobots", 10800)
-    print(str(len(recent_tweets)) + " recent tweets found from @smolrobots, looking for new robots")
+    log.log(str(len(recent_tweets)) + " recent tweets found from @smolrobots, looking for new robots")
     for tweet in recent_tweets:
         if robotdata.generate_robot_data(tweet.full_text, tweet.id):
-            print("Registered a new robot")
+            log.log("Registered a new robot from tweet id " + str(tweet.id))
 
 
 def check_tweets():
