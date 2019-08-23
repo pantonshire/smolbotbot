@@ -1,6 +1,7 @@
 import robots
 import robotdata
 import search
+import accounts
 import twitter
 import log
 import schedule
@@ -13,8 +14,6 @@ running = True
 
 responded_tweets = []
 responded_dms = []
-
-admin_ids = ["4494622517"]
 
 
 saved_responded_tweets = open("state/responded-tweets.txt", "r")
@@ -82,7 +81,7 @@ def check_tweets():
 
 
 def check_direct_messages():
-    global responded_dms, admin_ids
+    global responded_dms
 
     dms = twitter.direct_messages(7200, responded_dms)
 
@@ -95,7 +94,7 @@ def check_direct_messages():
         if should_respond(text):
             response = ""
 
-            if sender_id in admin_ids and text.startswith("$"):
+            if sender_id in accounts.admin_ids and text.startswith("$"):
                 response = do_command(text[1:].strip())
 
             else:
@@ -132,8 +131,7 @@ def do_command(command):
 
 
 def should_respond(query):
-    global ignore_re
-    return not ignore_re.search(query)
+    return accounts.bot_handle in query and not ignore_re.search(query)
 
 
 def load_phrases():
