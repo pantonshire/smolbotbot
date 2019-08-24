@@ -301,7 +301,6 @@ def contains_consecutive_keywords(tokens, keywords):
     if no_keywords > no_tokens:
         return False
     for x in range(0, no_tokens - no_keywords + 1):
-        print(tokens[x:x+no_keywords])
         if tokens[x:x+no_keywords] == keywords:
             return True
     return False
