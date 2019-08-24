@@ -1,7 +1,7 @@
 # Changelog
 
 ## Version 2.1.0
-In development
+Released 24/08/19
 - The bot now only responds to tweets which mention the bot but are not replying to anybody but the bot.
 - Phrases such as "can I have" are now removed from queries.
 - Each link to a small robot is now sent as a separate direct message.
