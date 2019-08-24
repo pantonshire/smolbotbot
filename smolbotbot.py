@@ -1,6 +1,7 @@
 import robots
 import robotdata
 import search
+import contentgen
 import accounts
 import twitter
 import log
@@ -72,7 +73,8 @@ def check_tweets():
         text = mention.full_text
         if should_respond(text):
             search_result = search.search(text)
-            twitter.reply(mention, search_result)
+            response = contentgen.make_tweet_response(search_result)
+            twitter.reply(mention, response)
             log.log("Tweet @" + mention.user.screen_name + ":" + str(mention.id))
         responded_tweets.append(mention.id)
         if len(responded_tweets) > 1024:
@@ -85,39 +87,40 @@ def check_direct_messages():
     dms = twitter.direct_messages(7200, responded_dms)
 
     for dm in dms:
-        text = dm["message_create"]["message_data"]["text"]
-        sender_id = dm["message_create"]["sender_id"]
-
-        should_blacklist = False
+        text = dm.message_create["message_data"]["text"]
+        sender_id = dm.message_create["sender_id"]
 
         if should_respond(text):
-            response = ""
+            response = []
 
             if sender_id in accounts.admin_ids and text.startswith("$"):
-                response = do_command(text[1:].strip())
+                response = [do_command(text[1:].lower().strip())]
 
             else:
-                response = search.search(text).replace("\'", "’").replace("\"", "”")
+                search_result = search.search(text)
+                response = contentgen.make_dms_response(search_result)
 
-            response = response.replace("\n", " ")
+            success = True
 
-            if twitter.send_direct_message(sender_id, response):
-                log.log("DM @" + sender_id + ":" + dm["id"])
-                should_blacklist = True
-            else:
-                log.log("DM @" + sender_id + ":" + dm["id"] + " failed")
-        else:
-            should_blacklist = True
+            for message in response:
+                if not twitter.send_direct_message(sender_id, message):
+                    log.log("DM user " + sender_id + ":" + dm.id + " failed")
+                    success = False
+                    break
 
-        if should_blacklist:
-            responded_dms.append(dm["id"])
-            if len(responded_dms) > 1024:
-                responded_dms = responded_dms[1:]
+            if success:
+                log.log("DM user " + sender_id + ":" + dm.id)
+
+        responded_dms.append(dm.id)
+        if len(responded_dms) > 1024:
+            responded_dms = responded_dms[1:]
 
 
 def do_command(command):
     global running
-    if command == "ldrobots":
+    if command == "help":
+        return "Valid commands: $help, $ldphrases, $ldrobots, $stop"
+    elif command == "ldrobots":
         loaded = robots.reload()
         return "Loaded " + str(loaded) + " robots"
     elif command == "ldphrases":
