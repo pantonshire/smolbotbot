@@ -138,7 +138,7 @@ def is_probably_request(mention):
 
 
 def contains_ignore(query):
-    return not ignore_re.search(query)
+    return ignore_re.search(query)
 
 
 def load_phrases():
