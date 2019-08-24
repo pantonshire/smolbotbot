@@ -17,6 +17,9 @@ class Robot:
         self.mentions = mentions
         self.hashtags = hashtags
 
+    def get_full_title(self):
+        return "no. " + str(self.number) + ", " + self.name
+
     def get_link(self):
         return "https://twitter.com/smolrobots/status/" + str(self.tweet_id)
 
