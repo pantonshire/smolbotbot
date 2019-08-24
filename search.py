@@ -10,7 +10,9 @@ del blacklist_file
 
 welcome_phrases = ("You\'re welcome!", "You\'re welcome!", "No problem!", "Just doing my job!", "My pleasure!")
 
-thank_keywords = ("thank", "thanks", "thx", "ty", "merci")
+random_keywords = ["random"]
+thank_keywords = ["thank", "thanks", "thx", "ty"]
+thank_keywords_fr = ["merci"]
 
 hyphen_re = re.compile("(\-(?=\D))|((?<=\S)\-)")
 at_re = re.compile("(?<=^|(?<=[^a-zA-Z0-9-\.]))#[A-Za-z_]+[A-Za-z0-9_]+")
@@ -35,25 +37,44 @@ token_scores = {
 def search(query):
     tokens = [token for token in tokenise(query) if token]
 
+    # State of bang!
+    if contains_consecutive_keywords(tokens, ["state", "of", "bang"]):
+        return result_output(result_type="bang")
+
+    # Check if the query asks for a robot by name
     by_name = search_by_name(tokens)
     if by_name:
-        return robot_list_result(by_name)
+        # return robot_list_result(by_name)
+        return result_output(robot_positions=by_name)
 
+    # Check if the query asks for a robot by number
     by_number = search_by_number(tokens)
     if by_number:
-        return robot_list_result(by_number)
+        # return robot_list_result(by_number)
+        return result_output(robot_positions=by_number)
 
-    if is_asking_for_random(tokens):
-        return random_result()
+    # Check if the query asks for a random robot
+    if contains_keyword(tokens, random_keywords):
+        return result_output(robot_objects=[robots.next_random_robot()], result_type="random")
 
-    if is_thanking(tokens):
-        return random.choice(welcome_phrases)
+    # Check if the query is thanking the smolbotbot in French (it's happened before!)
+    if contains_exact_keyword(tokens, thank_keywords_fr):
+        return result_output(result_type="welcome-fr")
 
+    # Check if the query is thanking the smolbotbot
+    if contains_exact_keyword(tokens, thank_keywords):
+        # return random.choice(welcome_phrases)
+        return result_output(result_type="welcome")
+
+    # Check each token in the query against robot tags
     by_tags = search_by_tags(tokens)
     if by_tags:
-        return robot_list_result(by_tags)
+        # return robot_list_result(by_tags)
+        return result_output(robot_positions=by_tags)
 
-    return "Sorry, I couldn\'t find the robot you\'re looking for. This might be because the robot isn\'t indexed yet, or because your request is too complicated for me."
+    # Return an empty result
+    return result_output()
+    # return "Sorry, I couldn\'t find the robot you\'re looking for. This might be because the robot isn\'t indexed yet, or because your request is too complicated for me."
 
 
 # First pass tokenisation of the query
@@ -119,7 +140,25 @@ def search_by_tags(tokens):
     ])
 
     tagged_tokens = [(token_data[0], stemmer.stem(token_data[0]), token_data[1]) for token_data in tagged_tokens]
-    allowed_tagged_tokens = [token_data for token_data in tagged_tokens if token_data[0] not in blacklist or token_data[1] == "BOT"]
+
+    # Remove unnecessary phrases
+    # TODO: Read this data from a file
+    tagged_tokens = without_all_consecutive_tokens(tagged_tokens, [
+        "can i have".split(),
+        "can i see".split(),
+        "may i have".split(),
+        "may i see".split(),
+        "can you find".split(),
+        "can you".split(),
+        "show me".split(),
+        "are there any".split(),
+        "is there anything".split(),
+        "is there a".split(),
+        "is there one".split(),
+        "i would like".split()
+    ])
+
+    print(tagged_tokens)
 
     scores = {}
 
@@ -143,6 +182,9 @@ def search_by_tags(tokens):
 
         for result in compound_name_results:
             add_score(scores, result, compound_name_score)
+
+    # Allowed tokens for checking against robot tags
+    allowed_tagged_tokens = [token_data for token_data in tagged_tokens if token_data[0] not in blacklist or token_data[1] == "BOT"]
 
     # Score robots by tags for each token
     for token_data in allowed_tagged_tokens:
@@ -185,7 +227,6 @@ def add_score(scores, robot, score):
 
 
 def get_by_partial_name(token):
-    global plural_re
     results_full = robots.get_by_name(token)
     results_singular = robots.get_by_name(plural_re.sub("", token))
     results_plural = robots.get_by_name(token + "s")
@@ -203,21 +244,66 @@ def search_for_compound_partial_name(tokens, no_words):
 
 
 def get_token_score(token_type):
-    global token_scores
     return token_scores[token_type] if token_type in token_scores else 1.0
 
 
-def is_asking_for_random(tokens):
-    for token in tokens:
-        if "random" in token:
+def without_consecutive_tokens(token_data, to_remove):
+    no_to_remove = len(to_remove)
+    no_remove_from = len(token_data)
+    if no_to_remove > no_remove_from:
+        return token_data
+    for x in range(0, no_remove_from - no_to_remove + 1):
+        if [data[0] for data in token_data[x:x+no_to_remove]] == to_remove:
+            return token_data[:x] + token_data[x+no_to_remove:]
+    return token_data
+
+
+def without_all_consecutive_tokens(token_data, consecutive_token_list):
+    if len(consecutive_token_list) == 0:
+        return token_data
+    if len(consecutive_token_list) == 1:
+        return without_consecutive_tokens(token_data, consecutive_token_list[0])
+    return without_all_consecutive_tokens(without_consecutive_tokens(token_data, consecutive_token_list[0]), consecutive_token_list[1:])
+
+
+# def is_asking_for_random(tokens):
+#     for token in tokens:
+#         if "random" in token:
+#             return True
+#     return False
+
+
+# def is_thanking(tokens):
+#     for keyword in thank_keywords:
+#         if keyword in tokens:
+#             return True
+#     return False
+
+
+# Checks if any of the keywords are in the list of tokens.
+def contains_exact_keyword(tokens, keywords):
+    for keyword in keywords:
+        if keyword in tokens:
             return True
     return False
 
 
-def is_thanking(tokens):
-    global thank_keywords
-    for keyword in thank_keywords:
-        if keyword in tokens:
+# Checks if any of the tokens contain any of the keywords.
+def contains_keyword(tokens, keywords):
+    for keyword in keywords:
+        for token in tokens:
+            if keyword in token:
+                return True
+    return False
+
+
+def contains_consecutive_keywords(tokens, keywords):
+    no_keywords = len(keywords)
+    no_tokens = len(tokens)
+    if no_keywords > no_tokens:
+        return False
+    for x in range(0, no_tokens - no_keywords + 1):
+        if tokens[x:x+no_tokens] == keywords:
             return True
     return False
 
@@ -232,14 +318,14 @@ def robot_list_result(positions):
     return "I found " + results_text
 
 
-def random_result():
-    # next_random_robot = robots.next_random_robot()
-    # return "Here\'s your randomly chosen robot, " + robots.link_to_robot(next_random_robot, False)
-    return result_output(robots=[robots.next_random_robot], result_type="random")
+# def random_result():
+#     # next_random_robot = robots.next_random_robot()
+#     # return "Here\'s your randomly chosen robot, " + robots.link_to_robot(next_random_robot, False)
+#     return result_output(robots=[robots.next_random_robot], result_type="random")
 
 
-def result_output(robot_positions=[], robots=[], result_type="search"):
+def result_output(robot_positions=[], robot_objects=[], result_type="search"):
     return {
-        "robots": [robot for robot in [robots.robot_data(position) for position in robot_positions] if robot] + robots,
+        "robots": [robot for robot in [robots.robot_data(position) for position in robot_positions] if robot] + robot_objects,
         "type": result_type
     }
