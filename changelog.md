@@ -10,6 +10,7 @@ Released 24/08/19
 - Direct messages are now handled using Tweepy rather than Twurl, as Tweepy 3.8.0 seems to fix direct messages.
 - Small robot data is now stored as objects rather than dictionaries.
 - The bot has learned a little bit of French.
+- Easter eggs!
 
 ## Version 2.0.3
 - Fixed a bug which caused each character to be written to a separate line in the log file.
