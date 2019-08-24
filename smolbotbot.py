@@ -71,7 +71,7 @@ def check_tweets():
 
     for mention in mentions:
         text = mention.full_text
-        if should_respond(text):
+        if is_probably_request(mention) and not contains_ignore(text):
             search_result = search.search(text)
             response = contentgen.make_tweet_response(search_result)
             twitter.reply(mention, response)
@@ -90,7 +90,7 @@ def check_direct_messages():
         text = dm.message_create["message_data"]["text"]
         sender_id = dm.message_create["sender_id"]
 
-        if should_respond(text):
+        if not contains_ignore(text):
             response = []
 
             if sender_id in accounts.admin_ids and text.startswith("$"):
@@ -132,8 +132,13 @@ def do_command(command):
     return "Unrecognised command"
 
 
-def should_respond(query):
-    return accounts.bot_handle in query and not ignore_re.search(query)
+# Returns true if the mention is either replying to @smolbotbot or nobody.
+def is_probably_request(mention):
+    return not mention.in_reply_to_user_id_str or mention.in_reply_to_user_id_str == accounts.bot_id
+
+
+def contains_ignore(query):
+    return not ignore_re.search(query)
 
 
 def load_phrases():
@@ -174,7 +179,7 @@ load_phrases()
 
 schedule.every().day.at("07:00").do(tweet_next_robot)
 schedule.every().hour.do(check_new_robots)
-schedule.every().minute.do(check_direct_messages)
+schedule.every(30).seconds.do(check_direct_messages)
 schedule.every(15).seconds.do(check_tweets)
 
 
