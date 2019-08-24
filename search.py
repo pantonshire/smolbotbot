@@ -158,8 +158,6 @@ def search_by_tags(tokens):
         "i would like".split()
     ])
 
-    print(tagged_tokens)
-
     scores = {}
 
     # Score robots by partial names for each token
