@@ -1,5 +1,16 @@
 # Changelog
 
+## Version 2.1.0
+In development
+- The bot now only responds to tweets which mention the bot but are not replying to anybody but the bot.
+- Phrases such as "can I have" are now removed from queries.
+- Each link to a small robot is now sent as a separate direct message.
+- Direct messages are now checked every 30 seconds rather than every minute.
+- Admin account is now tagged if certain errors occur.
+- Direct messages are now handled using Tweepy rather than Twurl, as Tweepy 3.8.0 seems to fix direct messages.
+- Small robot data is now stored as objects rather than dictionaries.
+- The bot has learned a little bit of French.
+
 ## Version 2.0.3
 - Fixed a bug which caused each character to be written to a separate line in the log file.
 
