@@ -197,6 +197,7 @@ def search_for_compound_partial_name(tokens, no_words):
     for i in range(len(tokens) - (no_words - 1)):
         joined = "".join(tokens[i : i + no_words])
         compound_results = get_by_partial_name(joined)
+
         results += compound_results
     return list(dict.fromkeys(results))
 
@@ -232,5 +233,13 @@ def robot_list_result(positions):
 
 
 def random_result():
-    next_random_robot = robots.next_random_robot()
-    return "Here\'s your randomly chosen robot, " + robots.link_to_robot(next_random_robot, False)
+    # next_random_robot = robots.next_random_robot()
+    # return "Here\'s your randomly chosen robot, " + robots.link_to_robot(next_random_robot, False)
+    return result_output(robots=[robots.next_random_robot], result_type="random")
+
+
+def result_output(robot_positions=[], robots=[], result_type="search"):
+    return {
+        "robots": [robot for robot in [robots.robot_data(position) for position in robot_positions] if robot] + robots,
+        "type": result_type
+    }

@@ -5,6 +5,22 @@ import re
 from collections import defaultdict
 
 
+class Robot:
+    def __init__(self, number, name, tweet_id, description, image, alt, tags, mentions, hashtags):
+        self.number = number
+        self.name = name
+        self.tweet_id = tweet_id
+        self.description = description
+        self.image = image
+        self.alt = alt
+        self.tags = tags
+        self.mentions = mentions
+        self.hashtags = hashtags
+
+    def get_link(self):
+        return "https://twitter.com/smolrobots/status/" + str(self.tweet_id)
+
+
 def setup():
     # Load the robot data from the file
     robots_file = open("data/robot-data.csv", "r")
@@ -41,17 +57,18 @@ def add_robot(attributes):
         robot_tags = attributes[6].split(" ")
         robot_mentions = attributes[7].split(" ")
 
-        robot = {
-            "number":       robot_number,
-            "name":         robot_name,
-            "tweet_id":     int(attributes[2]),
-            "description":  attributes[3],
-            "image":        attributes[4],
-            "alt":          attributes[5],
-            "tags":         robot_tags,
-            "mentions":     robot_mentions,
-            "hashtags":     attributes[8].split(" ")
-        }
+        robot = Robot(
+            number =        robot_number,
+            name =          robot_name,
+            tweet_id =      int(attributes[2]),
+            description =   attributes[3],
+            image =         attributes[4],
+            alt =           attributes[5],
+            tags =          robot_tags,
+            mentions =      robot_mentions,
+            hashtags =      attributes[8].split(" ")
+        )
+
         robots.append(robot)
         shuffled_robots_daily.insert(random.randrange(len(shuffled_robots_daily) + 1), list_pos)
         shuffled_robots_request.insert(random.randrange(len(shuffled_robots_request) + 1), list_pos)
@@ -87,15 +104,15 @@ def write_to_csv(robot_data):
 # Returns the robot's data as a list of strings which can be written to the csv file.
 def robot_to_row(robot):
     return [
-        str(robot["number"]),
-        robot["name"],
-        str(robot["tweet_id"]),
-        robot["description"],
-        robot["image"],
-        robot["alt"],
-        " ".join(robot["tags"]),
-        " ".join(robot["mentions"]),
-        " ".join(robot["hashtags"])
+        str(robot.number),
+        robot.name,
+        str(robot.tweet_id),
+        robot.description,
+        robot.image,
+        robot.alt,
+        " ".join(robot.tags),
+        " ".join(robot.mentions),
+        " ".join(robot.hashtags)
     ]
 
 
@@ -110,7 +127,7 @@ def next_daily_robot():
 
 
 def next_random_robot():
-    global robots, shuffled_robots_request, current_random
+    global shuffled_robots_request, current_random
     robot = robots[shuffled_robots_request[current_random]]
     current_random += 1
     if current_random >= len(shuffled_robots_request):
@@ -120,51 +137,46 @@ def next_random_robot():
 
 
 def get_by_number(number):
-    global number_index
     return number_index[number]
 
 
 def get_by_name(name):
-    global name_index
     return name_index[name]
 
 
 def get_by_tag(tag):
-    global tag_index
     return tag_index[tag]
 
 
 def get_by_mention(mention):
-    global mention_index
     return mention_index[mention]
 
 
 def robot_exists(number, name):
-    global bot_suffix_re
     return number in number_index and bot_suffix_re.sub("", name.lower()) in name_index
 
 
 def robot_data(position):
     if position in range(0, len(robots)):
         return robots[position]
-    return {}
+    return None
 
 
 def robot_name(position):
     if position in range(0, len(robots)):
-        return robots[position]["name"]
+        return robots[position].name
     return ""
 
 
-def link_to_robot_by_position(position, include_number):
+def link_to_robot_by_position(position, include_number=False):
     if position in range(0, len(robots)):
         return link_to_robot(robots[position], include_number)
     return ""
 
 
-def link_to_robot(robot, include_number):
-    return ("no. " + str(robot["number"]) + ", " if include_number else "") + robot["name"] + ": " +\
-           "https://twitter.com/smolrobots/status/" + str(robot["tweet_id"])
+def link_to_robot(robot, include_number=False):
+    return ("no. " + str(robot.number) + ", " if include_number else "") + robot.name + ": " +\
+           "https://twitter.com/smolrobots/status/" + str(robot.tweet_id)
 
 
 robots = []

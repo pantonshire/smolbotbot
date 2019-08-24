@@ -44,13 +44,12 @@ ignore_re = re.compile("\([^\(]*ignore[^\)]*\)")
 
 
 def tweet_next_robot():
-    global greeting_phrases, introduction_phrases
     robot = robots.next_daily_robot()
-    name = robot["name"]
+    name = robot.name
     date = time.strftime("%d/%m/%y")
     greeting = random.choice(greeting_phrases)
     introduction = random.choice(introduction_phrases)
-    link = "https://twitter.com/smolrobots/status/" + str(robot["tweet_id"])
+    link = robot.get_link()
     text = date + "\n" + greeting + " " + introduction + " " + name + "!" + link
     twitter.tweet(text)
 
@@ -153,8 +152,6 @@ def load_phrases():
 
 
 def close_bot():
-    global responded_tweets, responded_dms
-
     tweets_file = open("state/responded-tweets.txt", "w")
     for tweet_id in responded_tweets:
         tweets_file.write(str(tweet_id) + "\n")

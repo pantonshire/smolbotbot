@@ -21,7 +21,6 @@ api = tweepy.API(auth)
 
 
 def tweet(message):
-    global api
     try:
         api.update_status(message)
     except tweepy.TweepError:
@@ -29,7 +28,6 @@ def tweet(message):
 
 
 def reply(reply_to_tweet, message):
-    global api
     try:
         api.update_status("@" + reply_to_tweet.user.screen_name + " " + message, reply_to_tweet.id)
     except tweepy.TweepError:
@@ -37,13 +35,11 @@ def reply(reply_to_tweet, message):
 
 
 def mentions(count, max_seconds_ago, id_blacklist):
-    global api
     return [mention for mention in api.mentions_timeline(count=count, tweet_mode="extended")
             if not mention.id in id_blacklist and (dt.datetime.now() - mention.created_at).seconds < max_seconds_ago]
 
 
 def recent_tweets(user, max_seconds_ago):
-    global api
     return [(tweet.retweeted_status if hasattr(tweet, "retweeted_status") else tweet)
             for tweet in api.user_timeline("@" + user, tweet_mode="extended")
             if tweet.user.screen_name == user and (dt.datetime.now() - tweet.created_at).seconds < max_seconds_ago]
@@ -65,9 +61,9 @@ def direct_messages(max_seconds_ago, id_blacklist):
 
 def send_direct_message(user_id, message):
     try:
-        command = '/usr/local/bin/twurl -A \'Content-type: application/json\' -X POST /1.1/direct_messages/events/new.json -d\'{"event": {"type": "message_create", "message_create": {"target": {"recipient_id": "' + user_id + '"}, "message_data": {"text": "' + message + '"}}}}\''
-        return os.system(command) == 0
-    except:
+        api.send_direct_message(user_id, message)
+        return True
+    except tweepy.TweepError:
         log.log_error("Failed to send direct message to " + user_id)
         return False
    
