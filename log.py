@@ -16,7 +16,6 @@ def log(message):
 
 
 def log_error(message):
-    global begin_exception, end_exception
     exception = traceback.format_exc()
     log("!! ERROR !! " + message + "\n" + begin_exception + "\n" + exception + end_exception)
 
@@ -27,7 +26,7 @@ def write(message):
 
 
 def flush():
-    global lines, log_path
+    global lines
     if lines:
         file = open(log_path, "a")
         for line in lines:
