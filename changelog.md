@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 2.1.1
+Released 01/09/19
+- Tweets which explicitly contain the bot's @ will now always be responded to.
+- Fixed a bug which caused only the first instance of a blacklisted phrase to be ignored.
+
 ## Version 2.1.0
 Released 24/08/19
 - The bot now only responds to tweets which mention the bot but are not replying to anybody but the bot.
