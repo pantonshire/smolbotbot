@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 2.1.2
+Released 01/09/19
+- Changed direct message check frequency to every 90 seconds due to API limits.
+
 ## Version 2.1.1
 Released 01/09/19
 - Tweets which explicitly contain the bot's @ will now always be responded to.
