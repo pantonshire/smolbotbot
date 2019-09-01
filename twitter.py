@@ -65,4 +65,23 @@ def send_direct_message(user_id, message):
     except tweepy.TweepError:
         log.log_error("Failed to send direct message to " + user_id)
         return False
-   
+
+
+# Method for safely getting a tweet's text.
+# Returns either the tweet's full_text or text depending on whether tweet_mode="extended" was used or not.
+# Returns an empty string if no text attribute could be found.
+def tweet_text(tweet):
+    if hasattr(tweet, "full_text"):
+        return tweet.full_text
+    elif hasattr(tweet, "text"):
+        return tweet.text
+    return ""
+
+
+# Returns the text of the specified tweet as it would be displayed on the Twitter website.
+def actual_tweet_text(tweet):
+    text = tweet_text(tweet)
+    display_range = tweet.display_text_range
+    if len(display_range) < 2:
+        return text
+    return text[display_range[0]:display_range[1]]

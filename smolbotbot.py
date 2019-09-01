@@ -132,9 +132,12 @@ def do_command(command):
     return "Unrecognised command"
 
 
-# Returns true if the mention is either replying to @smolbotbot or nobody.
+# Returns true if the mention is either replying to @smolbotbot or nobody, or the mention explicitly
+# contains the bot's @.
 def is_probably_request(mention):
-    return not mention.in_reply_to_user_id_str or mention.in_reply_to_user_id_str == accounts.bot_id
+    return not mention.in_reply_to_user_id_str \
+        or mention.in_reply_to_user_id_str == accounts.bot_id \
+        or accounts.bot_handle.lower() in twitter.actual_tweet_text(mention).lower()
 
 
 def contains_ignore(query):
