@@ -182,7 +182,7 @@ load_phrases()
 
 schedule.every().day.at("07:00").do(tweet_next_robot)
 schedule.every().hour.do(check_new_robots)
-schedule.every(30).seconds.do(check_direct_messages)
+schedule.every(90).seconds.do(check_direct_messages)
 schedule.every(15).seconds.do(check_tweets)
 
 
