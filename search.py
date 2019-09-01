@@ -257,11 +257,15 @@ def without_consecutive_tokens(token_data, to_remove):
 
 
 def without_all_consecutive_tokens(token_data, consecutive_token_list):
-    if len(consecutive_token_list) == 0:
+    no_consecutive_token_sets = len(consecutive_token_list)
+    if no_consecutive_token_sets == 0:
         return token_data
-    if len(consecutive_token_list) == 1:
+    if no_consecutive_token_sets == 1:
         return without_consecutive_tokens(token_data, consecutive_token_list[0])
-    return without_all_consecutive_tokens(without_consecutive_tokens(token_data, consecutive_token_list[0]), consecutive_token_list[1:])
+    return without_all_consecutive_tokens(
+        without_consecutive_tokens(token_data, consecutive_token_list[0]),
+        consecutive_token_list[1:]
+    )
 
 
 # def is_asking_for_random(tokens):
