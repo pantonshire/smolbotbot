@@ -250,10 +250,16 @@ def without_consecutive_tokens(token_data, to_remove):
     no_remove_from = len(token_data)
     if no_to_remove > no_remove_from:
         return token_data
-    for x in range(0, no_remove_from - no_to_remove + 1):
-        if [data[0] for data in token_data[x:x+no_to_remove]] == to_remove:
-            return token_data[:x] + token_data[x+no_to_remove:]
-    return token_data
+    result_tokens = token_data
+    x = 0
+    while x <= no_remove_from - no_to_remove:
+        if not result_tokens:
+            break
+        elif [data[0] for data in result_tokens[x:x+no_to_remove]] == to_remove:
+            result_tokens = result_tokens[:x] + result_tokens[x+no_to_remove:]
+        else:
+            x += 1
+    return result_tokens
 
 
 def without_all_consecutive_tokens(token_data, consecutive_token_list):
