@@ -21,6 +21,7 @@ class Robot(Base):
     name = Column(String)
     prefix = Column(String)
     tweetid = Column(BigInteger)
+    timestamp = Column(BigInteger)
     description = Column(String)
     imgurl = Column(String)
     alt = Column(String)
@@ -68,12 +69,13 @@ def exists(session, number, name):
     return bool(query(session).filter_by(number=number, name=name).all())
 
 
-def add(session, number, name, tweet_id, description, img_url, alt, tags):
+def add(session, number, name, tweet_id, timestamp, description, img_url, alt, tags):
     robot = Robot(
         number=number,
         name=name,
         prefix=get_name_prefix(name),
         tweetid=tweet_id,
+        timestamp=timestamp,
         description=description,
         imgurl=img_url,
         alt=alt,

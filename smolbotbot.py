@@ -67,7 +67,7 @@ def check_new_robots():
 
 def check_tweets_for_robots(session, tweets):
     for tweet in recent_tweets:
-        if robotdata.generate_robot_data(session, tweet.full_text, tweet.id):
+        if robotdata.generate_robot_data(session, tweet):
             log.log("Registered a new robot from tweet id " + str(tweet.id))
 
 

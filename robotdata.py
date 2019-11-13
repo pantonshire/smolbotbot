@@ -32,7 +32,10 @@ stemmer = nltk.stem.PorterStemmer()
 key_token_types = ["N", "J"]
 
 
-def generate_robot_data(session, tweet_text, tweet_id):
+def generate_robot_data(session, tweet):
+    tweet_id = tweet.id
+    tweet_text = tweet.full_text
+
     # Check if the tweet starts with the classic robot intro: number) name
     bot_intro = bot_intro_lookahead_re.match(tweet_text)
     if not bot_intro:
@@ -101,7 +104,9 @@ def generate_robot_data(session, tweet_text, tweet_id):
     # Remove duplicates
     tags = list(dict.fromkeys(tags))
 
-    robots.add(session, number, name, tweet_id, polished_text, src, polished_alt, tags)
+    timestamp = int(tweet.created_at.timestamp())
+
+    robots.add(session, number, name, tweet_id, timestamp, polished_text, src, polished_alt, tags)
 
     return True
 
