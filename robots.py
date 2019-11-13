@@ -123,13 +123,13 @@ def add_robot(attributes):
         robot_mentions = attributes[7].split(" ")
 
         robot = Robot(
-            number =        robot_number,
-            name =          robot_name,
-            tweet_id =      int(attributes[2]),
-            description =   attributes[3],
-            image =         attributes[4],
-            alt =           attributes[5],
-            tags =          robot_tags,
+            number=robot_number,
+            name=robot_name,
+            tweet_id=int(attributes[2]),
+            description=attributes[3],
+            image=attributes[4],
+            alt=attributes[5],
+            tags=robot_tags,
         )
 
         robots.append(robot)
@@ -251,4 +251,4 @@ current_random = 0
 
 bot_suffix_re = re.compile("bot(s)?$")
 
-setup()
+# setup()
