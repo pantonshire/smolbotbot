@@ -129,7 +129,7 @@ def add_robot(attributes):
             description=attributes[3],
             image=attributes[4],
             alt=attributes[5],
-            tags=robot_tags,
+            tags=robot_tags
         )
 
         robots.append(robot)

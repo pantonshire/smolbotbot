@@ -101,12 +101,7 @@ def generate_robot_data(session, tweet_text, tweet_id):
     # Remove duplicates
     tags = list(dict.fromkeys(tags))
 
-    # Join lists as single strings
-    tagstr = " ".join(sorted(tags)).strip()
-    mentionstr = " ".join(sorted(mentions))
-    hashtagstr = " ".join(sorted(hashtags))
-
-    robots.add(session, number, name, tweet_id, polished_text, src, polished_alt, tagstr)
+    robots.add(session, number, name, tweet_id, polished_text, src, polished_alt, tags)
 
     return True
 
