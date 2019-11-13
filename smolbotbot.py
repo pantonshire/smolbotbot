@@ -59,14 +59,19 @@ def tweet_next_robot():
 
 def check_new_robots():
     recent_tweets = twitter.recent_tweets("smolrobots", 10800)
-    log.log(str(len(recent_tweets)) + " recent tweets found from @smolrobots, looking for new robots")
+    log.log("%d recent tweets found from @smolrobots, looking for new robots" %d (len(recent_tweets)))
+
+    if recent_tweets:
+        database.accessdb(check_tweets_for_robots, tweets)
+
+
+def check_tweets_for_robots(session, tweets):
     for tweet in recent_tweets:
-        if robotdata.generate_robot_data(tweet.full_text, tweet.id):
+        if robotdata.generate_robot_data(session, tweet.full_text, tweet.id):
             log.log("Registered a new robot from tweet id " + str(tweet.id))
 
 
 def check_tweets():
-    # Get the 20 most recent mentions, a maximum of 3 hours ago. Responded mentions are blacklisted
     mentions = twitter.mentions(20, 10800, responded_tweets)
     if mentions:
         database.accessdb(respond_mentions, mentions)

@@ -32,9 +32,7 @@ stemmer = nltk.stem.PorterStemmer()
 key_token_types = ["N", "J"]
 
 
-def generate_robot_data(tweet_text, tweet_id):
-    id_str = str(tweet_id)
-
+def generate_robot_data(session, tweet_text, tweet_id):
     # Check if the tweet starts with the classic robot intro: number) name
     bot_intro = bot_intro_lookahead_re.match(tweet_text)
     if not bot_intro:
@@ -45,12 +43,11 @@ def generate_robot_data(tweet_text, tweet_id):
     if len(intro_data) != 2 or not is_str_int(intro_data[0]):
         return False
 
-    # Store the name and number as strings (no need to store the number as an integer)
-    number = intro_data[0]
+    number = int(intro_data[0])
     name = intro_data[1]
 
     # Check if the robot is already indexed
-    if robots.robot_exists(int(number), name):
+    if robots.exists(session, number, name):
         return False
 
     text = tweet_text
@@ -59,23 +56,23 @@ def generate_robot_data(tweet_text, tweet_id):
 
     try:
         # Get the tweet page
-        page = urllib.request.urlopen("https://twitter.com/smolrobots/status/" + id_str)
+        page = urllib.request.urlopen("https://twitter.com/smolrobots/status/%d" % (tweet_id))
         content = page.read()
         dom = BeautifulSoup(content, features="lxml")
 
         # Get the text, image src and image alt from the page
-        tweet_container = dom.body.find(class_="tweet", attrs={"data-associated-tweet-id": id_str})
+        tweet_container = dom.body.find(class_="tweet", attrs={"data-associated-tweet-id": str(tweet_id)})
         text = tweet_container.find(class_="tweet-text").text
         image = tweet_container.find(class_="AdaptiveMedia-container").find("img")
         src = image.get("src")
         alt = image.get("alt")
 
     except urllib.error.HTTPError:
-        log.log_error("HTTP error when getting page for robot with id " + id_str)
+        log.log_error("HTTP error when getting page for robot with id %d" % (tweet_id))
         return False
 
     except AttributeError:
-        log.log_error("Error parsing robot page with id " + id_str)
+        log.log_error("Error parsing robot page with id %d" % (tweet_id))
         pass # Do not return false if an element was not found; some data may still be available
 
     # Sanitise the description and alt text
@@ -109,13 +106,7 @@ def generate_robot_data(tweet_text, tweet_id):
     mentionstr = " ".join(sorted(mentions))
     hashtagstr = " ".join(sorted(hashtags))
 
-    robot_data = [number, name, id_str, polished_text, src, polished_alt, tagstr, mentionstr, hashtagstr]
-
-    # Add robot to list and lookup dictionaries
-    robots.add_robot(robot_data)
-
-    # Write the robot data to the csv
-    robots.write_to_csv(robot_data)
+    robots.add(session, number, name, tweet_id, polished_text, src, polished_alt, tagstr)
 
     return True
 
