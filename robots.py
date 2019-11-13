@@ -77,7 +77,7 @@ def add(session, number, name, tweet_id, description, img_url, alt, tags):
         description=description,
         imgurl=img_url,
         alt=alt,
-        tags=" ".join(tags).lower()
+        tags=" ".join(sort(tags)).lower()
     )
     session.add(robot)
 
