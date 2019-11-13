@@ -1,4 +1,6 @@
 import robots
+import initdata
+
 import nltk
 import re
 import random
@@ -8,11 +10,11 @@ blacklist = set([line.lower().strip() for line in blacklist_file])
 blacklist_file.close()
 del blacklist_file
 
-welcome_phrases = ("You\'re welcome!", "You\'re welcome!", "No problem!", "Just doing my job!", "My pleasure!")
-
 random_keywords = ["random"]
 thank_keywords = ["thank", "thanks", "thx", "ty"]
 thank_keywords_fr = ["merci"]
+
+ignore_phrases = initdata.read_lines("data/ignore-phrases.txt")
 
 hyphen_re = re.compile("(\-(?=\D))|((?<=\S)\-)")
 at_re = re.compile("(?<=^|(?<=[^a-zA-Z0-9-\.]))#[A-Za-z_]+[A-Za-z0-9_]+")
@@ -34,7 +36,7 @@ token_scores = {
 # Search for robots given the query.
 # Media should be removed from the query before it is passed into the function.
 # Mentions will be removed by the function.
-def search(query):
+def search(session, query):
     tokens = [token for token in tokenise(query) if token]
 
     # State of bang!
@@ -42,16 +44,14 @@ def search(query):
         return result_output(result_type="bang")
 
     # Check if the query asks for a robot by name
-    by_name = search_by_name(tokens)
+    by_name = search_by_name(session, tokens)
     if by_name:
-        # return robot_list_result(by_name)
-        return result_output(robot_positions=by_name)
+        return result_output(robot_objects=by_name)
 
     # Check if the query asks for a robot by number
-    by_number = search_by_number(tokens)
+    by_number = search_by_number(session, tokens)
     if by_number:
-        # return robot_list_result(by_number)
-        return result_output(robot_positions=by_number)
+        return result_output(robot_objects=by_number)
 
     # Check if the query asks for a random robot
     if contains_keyword(tokens, random_keywords):
@@ -63,18 +63,15 @@ def search(query):
 
     # Check if the query is thanking the smolbotbot
     if contains_exact_keyword(tokens, thank_keywords):
-        # return random.choice(welcome_phrases)
         return result_output(result_type="welcome")
 
     # Check each token in the query against robot tags
-    by_tags = search_by_tags(tokens)
+    by_tags = search_by_tags(session, tokens)
     if by_tags:
-        # return robot_list_result(by_tags)
-        return result_output(robot_positions=by_tags)
+        return result_output(robot_objects=by_tags)
 
     # Return an empty result
     return result_output()
-    # return "Sorry, I couldn\'t find the robot you\'re looking for. This might be because the robot isn\'t indexed yet, or because your request is too complicated for me."
 
 
 # First pass tokenisation of the query
@@ -101,37 +98,32 @@ def is_str_int(string):
     return string.isdigit()
 
 
-# Searches for a robot's name in the given tokens. Returns the positions of the robots whose
-# names were found.
-def search_by_name(tokens):
-    found = []
+def search_by_name(session, tokens):
+    prefixes = []
+
     for index, token in enumerate(tokens):
         if "bot" in token:
             stripped_token = bot_ending_re.sub("", token)
 
             if stripped_token:
-                found.extend(robots.get_by_name(stripped_token))
-                found.extend(robots.get_by_name(stripped_token + "s"))
-                found.extend(robots.get_by_name(plural_re.sub("", stripped_token)))
+                prefixes.extend([
+                    stripped_token,
+                    stripped_token + "s",
+                    plural_re.sub("", stripped_token)
+                ])
 
             if token in ("bot", "bots"):
                 for x in range(0, index):
-                    found.extend(robots.get_by_name("".join(tokens[x:index])))
+                    prefixes.append("".join(tokens[x:index])
 
-    return list(dict.fromkeys(found))
-
-
-# Searches for a robot's number in the given tokens. Returns the positions of the robots whose
-# numbers were found.
-def search_by_number(tokens):
-    found = []
-    for token in tokens:
-        if is_str_int(token):
-            found.extend(robots.get_by_number(int(token)))
-    return list(dict.fromkeys(found))
+    return robots.by_prefixes(session, prefixes)
 
 
-def search_by_tags(tokens):
+def search_by_number(session, tokens):
+    return robots.by_numbers(session, [int(token) for token in tokens if is_str_int(token)])
+
+
+def search_by_tags(session, tokens):
     tagged_tokens = nltk.pos_tag(tokens)
 
     tagged_tokens.extend([
@@ -142,21 +134,7 @@ def search_by_tags(tokens):
     tagged_tokens = [(token_data[0], stemmer.stem(token_data[0]), token_data[1]) for token_data in tagged_tokens]
 
     # Remove unnecessary phrases
-    # TODO: Read this data from a file
-    tagged_tokens = without_all_consecutive_tokens(tagged_tokens, [
-        "can i have".split(),
-        "can i see".split(),
-        "may i have".split(),
-        "may i see".split(),
-        "can you find".split(),
-        "can you".split(),
-        "show me".split(),
-        "are there any".split(),
-        "is there anything".split(),
-        "is there a".split(),
-        "is there one".split(),
-        "i would like".split()
-    ])
+    tagged_tokens = without_all_consecutive_tokens(tagged_tokens, ignore_phrases)
 
     scores = {}
 
@@ -207,7 +185,7 @@ def search_by_tags(tokens):
             for result in results:
                 add_score(scores, result, score)
 
-    score_list = sorted([(position, scores[position]) for position in scores], key = lambda result: -result[1])
+    score_list = sorted([(position, scores[position]) for position in scores], key=lambda result: -result[1])
 
     highest_score = score_list[0][1] if score_list else 0
     max_delta_score = 5.0
@@ -274,20 +252,6 @@ def without_all_consecutive_tokens(token_data, consecutive_token_list):
     )
 
 
-# def is_asking_for_random(tokens):
-#     for token in tokens:
-#         if "random" in token:
-#             return True
-#     return False
-
-
-# def is_thanking(tokens):
-#     for keyword in thank_keywords:
-#         if keyword in tokens:
-#             return True
-#     return False
-
-
 # Checks if any of the keywords are in the list of tokens.
 def contains_exact_keyword(tokens, keywords):
     for keyword in keywords:
@@ -326,14 +290,8 @@ def robot_list_result(positions):
     return "I found " + results_text
 
 
-# def random_result():
-#     # next_random_robot = robots.next_random_robot()
-#     # return "Here\'s your randomly chosen robot, " + robots.link_to_robot(next_random_robot, False)
-#     return result_output(robots=[robots.next_random_robot], result_type="random")
-
-
-def result_output(robot_positions=[], robot_objects=[], result_type="search"):
+def result_output(robot_objects=[], result_type="search"):
     return {
-        "robots": [robot for robot in [robots.robot_data(position) for position in robot_positions] if robot] + robot_objects,
+        "robots": robot_objects,
         "type": result_type
     }

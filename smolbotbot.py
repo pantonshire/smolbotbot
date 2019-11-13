@@ -4,7 +4,9 @@ import search
 import contentgen
 import accounts
 import twitter
+import database
 import log
+
 import schedule
 import time
 import random
@@ -64,27 +66,38 @@ def check_new_robots():
 
 
 def check_tweets():
-    global responded_tweets
-
     # Get the 20 most recent mentions, a maximum of 3 hours ago. Responded mentions are blacklisted
     mentions = twitter.mentions(20, 10800, responded_tweets)
+    if mentions:
+        database.accessdb(respond_mentions, mentions)
+
+
+def respond_mentions(session, mentions):
+    global responded_tweets
 
     for mention in mentions:
         text = mention.full_text
+
         if is_probably_request(mention) and not contains_ignore(text):
-            search_result = search.search(text)
+            search_result = search.search(session, text)
             response = contentgen.make_tweet_response(search_result)
             twitter.reply(mention, response)
             log.log("Tweet @" + mention.user.screen_name + ":" + str(mention.id))
+
         responded_tweets.append(mention.id)
+
         if len(responded_tweets) > 1024:
             responded_tweets = responded_tweets[1:]
 
 
 def check_direct_messages():
-    global responded_dms
-
     dms = twitter.direct_messages(7200, responded_dms)
+    if dms:
+        database.accessdb(respond_dms, dms)
+
+
+def respond_dms(session, dms):
+    global responded_dms
 
     for dm in dms:
         text = dm.message_create["message_data"]["text"]
@@ -97,7 +110,7 @@ def check_direct_messages():
                 response = [do_command(text[1:].lower().strip())]
 
             else:
-                search_result = search.search(text)
+                search_result = search.search(session, text)
                 response = contentgen.make_dms_response(search_result)
 
             success = True

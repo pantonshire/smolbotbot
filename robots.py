@@ -1,27 +1,89 @@
 import log
+
 import csv
 import random
 import re
 from collections import defaultdict
 
+from sqlalchemy import Column, Integer, BigInteger, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import func
 
-class Robot:
-    def __init__(self, number, name, tweet_id, description, image, alt, tags, mentions, hashtags):
-        self.number = number
-        self.name = name
-        self.tweet_id = tweet_id
-        self.description = description
-        self.image = image
-        self.alt = alt
-        self.tags = tags
-        self.mentions = mentions
-        self.hashtags = hashtags
+
+Base = declarative_base()
+
+
+class Robot(Base):
+    __tablename__ = "robots"
+
+    id = Column(Integer, primary_key=True)
+    number = Column(Integer)
+    name = Column(String)
+    prefix = Column(String)
+    tweetid = Column(BigInteger)
+    description = Column(String)
+    imgurl = Column(String)
+    alt = Column(String)
+    tags = Column(String)
+
+    def __repr__(self):
+        return self.get_full_title()
 
     def get_full_title(self):
-        return "no. " + str(self.number) + ", " + self.name
+        return "no. %d, %s" % (self.number, self.name)
 
     def get_link(self):
-        return "https://twitter.com/smolrobots/status/" + str(self.tweet_id)
+        return "https://twitter.com/smolrobots/status/%d" % (self.tweet_id)
+
+
+def query(session):
+    return session.query(Robot)
+
+
+def by_id(session, id):
+    return query(session).filter_by(id=id).first()
+
+
+def by_number(session, number):
+    return query(session).filter_by(number=number).all()
+
+
+def by_numbers(session, numbers):
+    return query(session).filter(Robot.number.in_(numbers)).all()
+
+
+def by_name(session, name):
+    return query(session).filter(func.lower(Robot.number) == name.lower()).all()
+
+
+def by_prefix(session, prefix):
+    return query(session).filter_by(prefix=prefix.lower()).all()
+
+
+def by_prefixes(session, prefixes):
+    return query(session).filter(Robot.prefix.in_(prefixes)).all()
+
+
+def exists(session, number, name):
+    return bool(query(session).filter_by(number=number, name=name).all())
+
+
+def add(session, number, name, tweet_id, description, img_url, alt, tags):
+    robot = Robot(
+        number=number,
+        name=name,
+        prefix=get_name_prefix(name),
+        tweetid=tweet_id,
+        description=description,
+        imgurl=img_url,
+        alt=alt,
+        tags=" ".join(tags).lower()
+    )
+    session.add(robot)
+
+
+def get_name_prefix(name):
+    return bot_suffix_re.sub("", name.lower())
 
 
 def setup():
@@ -68,8 +130,6 @@ def add_robot(attributes):
             image =         attributes[4],
             alt =           attributes[5],
             tags =          robot_tags,
-            mentions =      robot_mentions,
-            hashtags =      attributes[8].split(" ")
         )
 
         robots.append(robot)
@@ -149,10 +209,6 @@ def get_by_name(name):
 
 def get_by_tag(tag):
     return tag_index[tag]
-
-
-def get_by_mention(mention):
-    return mention_index[mention]
 
 
 def robot_exists(number, name):

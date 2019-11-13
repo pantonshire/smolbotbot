@@ -1,5 +1,6 @@
 import robots
 import log
+
 import re
 import urllib.request
 import urllib.error
@@ -32,8 +33,6 @@ key_token_types = ["N", "J"]
 
 
 def generate_robot_data(tweet_text, tweet_id):
-    global bot_intro_lookahead_re, at_re, hashtag_re, stemmer, key_token_types, sanitise_expressions, polish_expressions
-
     id_str = str(tweet_id)
 
     # Check if the tweet starts with the classic robot intro: number) name
@@ -129,12 +128,10 @@ def sanitise(text, expressions):
 
 
 def split_compound_words(text):
-    global compound_word_re
     return compound_word_re.sub(" ", text)
 
 
 def clean_token(token):
-    global trailing_punctuation_re
     return trailing_punctuation_re.sub("", token.strip())
 
 

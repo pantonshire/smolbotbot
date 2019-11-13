@@ -1,5 +1,7 @@
 import log
 import accounts
+import initdata
+
 import tweepy
 import subprocess as sp
 import json
@@ -7,15 +9,12 @@ import os
 import datetime as dt
 
 
-key_file = open("data/.api", "r")
-lines = [line.strip() for line in key_file]
-key_file.close()
+lines = initdata.read_lines("data/.api")
 
 auth = tweepy.OAuthHandler(lines[0], lines[1])
 auth.set_access_token(lines[2], lines[3])
 
 del lines
-del key_file
 
 api = tweepy.API(auth)
 
@@ -24,14 +23,14 @@ def tweet(message):
     try:
         api.update_status(message)
     except tweepy.TweepError:
-        log.log_error("Failed to tweet: " + message)
+        log.log_error("Failed to tweet: %s" % (message))
 
 
 def reply(reply_to_tweet, message):
     try:
-        api.update_status("@" + reply_to_tweet.user.screen_name + " " + message, reply_to_tweet.id)
+        api.update_status("@%s %s" % (reply_to_tweet.user.screen_name, message), reply_to_tweet.id)
     except tweepy.TweepError:
-        log.log_error("Failed to reply to " + reply_to_tweet.user.name)
+        log.log_error("Failed to reply to %s" (reply_to_tweet.user.name))
 
 
 def mentions(count, max_seconds_ago, id_blacklist):
@@ -67,7 +66,7 @@ def send_direct_message(user_id, message):
         return False
 
 
-# Method for safely getting a tweet's text.
+# Function for safely getting a tweet's text.
 # Returns either the tweet's full_text or text depending on whether tweet_mode="extended" was used or not.
 # Returns an empty string if no text attribute could be found.
 def tweet_text(tweet):
