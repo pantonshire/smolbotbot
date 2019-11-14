@@ -86,7 +86,7 @@ def by_prefixes(session, prefixes):
 
 
 def by_tag(session, tag):
-    return query(session).filter(_or(
+    return query(session).filter(or_(
         Robot.tag.ilike("% " + tag + " %"),
         Robot.tag.ilike("% " + tag),
         Robot.tag.ilike(tag + " %"),
