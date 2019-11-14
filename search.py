@@ -114,7 +114,7 @@ def search_by_name(session, tokens):
 
             if token in ("bot", "bots"):
                 for x in range(0, index):
-                    prefixes.append("".join(tokens[x:index])
+                    prefixes.append("".join(tokens[x:index]))
 
     return robots.by_prefixes(session, prefixes)
 
