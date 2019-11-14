@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from sqlalchemy import Column, Integer, BigInteger, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 
 Base = declarative_base()
@@ -36,6 +36,22 @@ class Robot(Base):
     def get_link(self):
         return "https://twitter.com/smolrobots/status/%d" % (self.tweet_id)
 
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "number": self.number,
+            "name": self.name,
+            "prefix": self.prefix,
+            "tweetid": self.tweetid,
+            "timestamp": self.timestamp,
+            "description": self.description,
+            "imgurl": self.imgurl,
+            "alt": self.alt,
+            "tags": self.tags,
+            "title": self.get_full_title(),
+            "link": self.get_link()
+        }
+
 
 def query(session):
     return session.query(Robot)
@@ -50,6 +66,8 @@ def by_number(session, number):
 
 
 def by_numbers(session, numbers):
+    if not numbers:
+        return []
     return query(session).filter(Robot.number.in_(numbers)).all()
 
 
@@ -62,7 +80,22 @@ def by_prefix(session, prefix):
 
 
 def by_prefixes(session, prefixes):
+    if not prefixes:
+        return []
     return query(session).filter(Robot.prefix.in_(prefixes)).all()
+
+
+def by_tag(session, tag):
+    return query(session).filter(_or(
+        Robot.tag.ilike("% " + tag + " %"),
+        Robot.tag.ilike("% " + tag),
+        Robot.tag.ilike(tag + " %"),
+        func.lower(Robot.tag) == tag.lower()
+    )).all()
+
+
+def random_robot(session):
+    return random.choice(query(session).all())
 
 
 def exists(session, number, name):

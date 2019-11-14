@@ -55,7 +55,7 @@ def search(session, query):
 
     # Check if the query asks for a random robot
     if contains_keyword(tokens, random_keywords):
-        return result_output(robot_objects=[robots.next_random_robot()], result_type="random")
+        return result_output(robot_objects=[robots.random_robot(session)], result_type="random")
 
     # Check if the query is thanking the smolbotbot in French (it's happened before!)
     if contains_exact_keyword(tokens, thank_keywords_fr):
@@ -140,7 +140,7 @@ def search_by_tags(session, tokens):
 
     # Score robots by partial names for each token
     for token_data in tagged_tokens:
-        name_results = get_by_partial_name(token_data[0])
+        name_results = get_by_partial_names(session, [token_data[0]])
 
         if not name_results:
             continue
@@ -167,8 +167,8 @@ def search_by_tags(session, tokens):
         full_token = token_data[0]
         stemmed_token = token_data[1]
 
-        full_results = robots.get_by_tag(full_token)
-        stemmed_results = [result for result in robots.get_by_tag(stemmed_token) if result not in full_results]
+        full_results = robots.by_tag(session, full_token)
+        stemmed_results = [result for result in robots.by_tag(session, stemmed_token) if result not in full_results]
 
         if not full_results and not stemmed_results:
             continue
@@ -202,21 +202,12 @@ def add_score(scores, robot, score):
         scores[robot] = score
 
 
-def get_by_partial_name(token):
-    results_full = robots.get_by_name(token)
-    results_singular = robots.get_by_name(plural_re.sub("", token))
-    results_plural = robots.get_by_name(token + "s")
-    return list(dict.fromkeys(results_full + results_singular + results_plural))
+def get_by_partial_names(session, tokens):
+    return robots.by_prefixes(session, tokens + [token + "s" for token in tokens] + [plural_re.sub("", token) for token in tokens])
 
 
-def search_for_compound_partial_name(tokens, no_words):
-    results = []
-    for i in range(len(tokens) - (no_words - 1)):
-        joined = "".join(tokens[i : i + no_words])
-        compound_results = get_by_partial_name(joined)
-
-        results += compound_results
-    return list(dict.fromkeys(results))
+def search_for_compound_partial_name(session, tokens, no_words):
+    return get_by_partial_names(session, ["".join(tokens[x : x + no_words]) for x in range(len(tokens) - (no_words - 1))])
 
 
 def get_token_score(token_type):
@@ -278,16 +269,6 @@ def contains_consecutive_keywords(tokens, keywords):
         if tokens[x:x+no_keywords] == keywords:
             return True
     return False
-
-
-def robot_list_result(positions):
-    top_results = positions[0:4]
-    results_text = "\n".join([robots.link_to_robot_by_position(position, True) for position in top_results])
-    if len(top_results) > 2:
-        return "I found a few different robots:\n" + results_text
-    if len(top_results) > 1:
-        return "I found a couple of robots:\n" + results_text
-    return "I found " + results_text
 
 
 def result_output(robot_objects=[], result_type="search"):
