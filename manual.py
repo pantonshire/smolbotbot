@@ -12,7 +12,7 @@ def add_robot(tweetid):
     database.accessdb(robotdata.generate_robot_data, twitter.api.get_status(tweetid, tweet_mode="extended"))
 
 
-def search(query):
+def search_for(query):
     database.accessdb(_do_search, query)
 
 
