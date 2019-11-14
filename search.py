@@ -154,7 +154,7 @@ def search_by_tags(session, tokens):
 
     # Score robots by compound token names
     for no_words in range(2, 4):
-        compound_name_results = search_for_compound_partial_name(tokens, no_words)
+        compound_name_results = search_for_compound_partial_name(session, tokens, no_words)
 
         for result in compound_name_results:
             add_score(scores, result, compound_name_score)
