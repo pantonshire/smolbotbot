@@ -46,8 +46,13 @@ introduction_phrases = [""]
 ignore_re = re.compile("\([^\(]*ignore[^\)]*\)")
 
 
-def tweet_next_robot():
-    robot = robots.next_daily_robot()
+def daily_robot():
+    database.accessdb(tweet_next_robot)
+
+
+# TODO: avoid duplicates
+def tweet_next_robot(session):
+    robot = robots.random_robot(session)
     name = robot.name
     date = time.strftime("%d/%m/%y")
     greeting = random.choice(greeting_phrases)
@@ -71,7 +76,7 @@ def check_tweets_for_robots(session, tweets):
             log.log("Registered a new robot from tweet id " + str(tweet.id))
 
 
-def check_tweets():
+def check_mentions():
     mentions = twitter.mentions(20, 10800, responded_tweets)
     if mentions:
         database.accessdb(respond_mentions, mentions)
@@ -198,10 +203,10 @@ def close_bot():
 
 load_phrases()
 
-schedule.every().day.at("07:00").do(tweet_next_robot)
+schedule.every().day.at("07:00").do(daily_robot)
 schedule.every().hour.do(check_new_robots)
 schedule.every(90).seconds.do(check_direct_messages)
-schedule.every(15).seconds.do(check_tweets)
+schedule.every(15).seconds.do(check_mentions)
 
 
 log.log("Starting")
