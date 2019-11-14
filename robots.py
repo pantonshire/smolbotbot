@@ -34,7 +34,7 @@ class Robot(Base):
         return "no. %d, %s" % (self.number, self.name)
 
     def get_link(self):
-        return "https://twitter.com/smolrobots/status/%d" % (self.tweet_id)
+        return "https://twitter.com/smolrobots/status/%d" % (self.tweetid)
 
     def as_dict(self):
         return {
