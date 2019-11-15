@@ -67,11 +67,11 @@ def check_new_robots():
     log.log("%d recent tweets found from @smolrobots, looking for new robots" % (len(recent_tweets)))
 
     if recent_tweets:
-        database.accessdb(check_tweets_for_robots, tweets)
+        database.accessdb(check_tweets_for_robots, recent_tweets)
 
 
 def check_tweets_for_robots(session, tweets):
-    for tweet in recent_tweets:
+    for tweet in tweets:
         if robotdata.generate_robot_data(session, tweet):
             log.log("Registered a new robot from tweet id " + str(tweet.id))
 
