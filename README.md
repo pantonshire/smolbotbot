@@ -21,9 +21,9 @@ If you want to make a contribution, feel free to submit a pull request.
 [The changelog can be found here](https://github.com/Pantonshire/SmolBotBot/blob/master/changelog.md#changelog). I try to update it whenever I add or change something, but it may sometimes be a bit behind!
 
 ## Dependencies
-- [Twurl](https://github.com/twitter/twurl)
 - [Tweepy](https://github.com/tweepy/tweepy)
 - [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/)
 - [LXML](https://github.com/lxml/lxml)
 - [NLTK](http://www.nltk.org/)
 - [Schedule](https://github.com/dbader/schedule)
+- [SQLAlchemy](https://www.sqlalchemy.org)
