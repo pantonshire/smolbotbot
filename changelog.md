@@ -1,5 +1,14 @@
 # Changelog
 
+## Version 3.0-pre.1
+Released 15/11/19
+- A database is now used to store all robot data, the URI of which is specified in data/.db.
+- The timestamp at which the robots were published to Twitter is now stored.
+- Robot name prefixes are now stored separately from the name; this is the lowercase name with the "bot" suffix removed.
+- Mentions and hashtags relating to robots are no longer stored.
+- robot-data.csv is now obsolete (but is still included for the time being).
+- Added manual.py to allow some of the tasks performed by the bot to be performed manually.
+
 ## Version 2.1.2
 Released 01/09/19
 - Changed direct message check frequency to every 90 seconds due to API limits.
