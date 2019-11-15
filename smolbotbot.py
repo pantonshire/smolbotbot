@@ -64,7 +64,7 @@ def tweet_next_robot(session):
 
 def check_new_robots():
     recent_tweets = twitter.recent_tweets("smolrobots", 10800)
-    log.log("%d recent tweets found from @smolrobots, looking for new robots" %d (len(recent_tweets)))
+    log.log("%d recent tweets found from @smolrobots, looking for new robots" % (len(recent_tweets)))
 
     if recent_tweets:
         database.accessdb(check_tweets_for_robots, tweets)
