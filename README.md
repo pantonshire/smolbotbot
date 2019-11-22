@@ -14,7 +14,7 @@ Written for Python 3.
 If you want to make a contribution, feel free to submit a pull request.
 
 ## Installing
-Run the `setup.py` file to install.
+First, run the `data_setup.py` file.
 
 You will be prompted to provide the following:
 - Twitter API keys
