@@ -166,7 +166,7 @@ def load_phrases():
     if not greeting_phrases:
         greeting_phrases = ["[INTERNAL ERROR]"]
 
-    introduction_phrases = [line.strip() for line in data.read_lines("data.botd-intros.txt")]
+    introduction_phrases = [line.strip() for line in data.read_lines("data/botd-intros.txt")]
 
     if not introduction_phrases:
         introduction_phrases = ["[INTERNAL ERROR]"]
