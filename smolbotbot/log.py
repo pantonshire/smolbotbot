@@ -1,8 +1,10 @@
+from . import data
+
 import time
 import traceback
 
 
-log_path = "state/log.txt"
+log_path = data.internal_path("state/log.txt")
 lines = []
 
 begin_exception = ("-" * 15) + " BEGIN EXCEPTION " + ("-" * 15)
