@@ -20,7 +20,6 @@ for tweet_id in saved_responded_tweets:
         continue
 saved_responded_tweets.close()
 del saved_responded_tweets
-log.log("Loaded responded tweets: " + str(responded_tweets))
 
 saved_responded_dms = open("state/responded-dms.txt", "r")
 for dm_id in saved_responded_dms:
@@ -29,7 +28,6 @@ for dm_id in saved_responded_dms:
         responded_dms.append(dm_id_stripped) # DM ids are stored as strings for convenience
 saved_responded_dms.close()
 del saved_responded_dms
-log.log("Loaded responded dms: " + str(responded_dms))
 
 
 greeting_phrases = [""]
@@ -194,26 +192,26 @@ def close_bot():
     log.log("Stopping")
 
 
-load_phrases()
+def run():
+    load_phrases()
 
-schedule.every().day.at("07:00").do(daily_robot)
-schedule.every().hour.do(check_new_robots)
-schedule.every(90).seconds.do(check_direct_messages)
-schedule.every(15).seconds.do(check_mentions)
+    schedule.every().day.at("07:00").do(daily_robot)
+    schedule.every().hour.do(check_new_robots)
+    schedule.every(90).seconds.do(check_direct_messages)
+    schedule.every(15).seconds.do(check_mentions)
 
+    log.log("Starting")
 
-log.log("Starting")
+    while running:
+        try:
+            time.sleep(1)
+            schedule.run_pending()
+            log.flush()
+        except KeyboardInterrupt:
+            log.log("Keyboard interrupt, stopping")
+            break
+        except:
+            log.log_error("An uncaught error occurred in schedule loop")
 
-while running:
-    try:
-        time.sleep(1)
-        schedule.run_pending()
-        log.flush()
-    except KeyboardInterrupt:
-        log.log("Keyboard interrupt, stopping")
-        break
-    except:
-        log.log_error("An uncaught error occurred in schedule loop")
-
-close_bot()
-print("Goodbye!")
+    close_bot()
+    print("Goodbye!")
