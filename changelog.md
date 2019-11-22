@@ -5,6 +5,7 @@ In development
 - Restructured the project so that it is contained in a Python package.
 - Added a `setup.py` file for setting up the project.
 - The `data/.api` and `data/.db` files now use a json format.
+- Fixed an issue with ignoring phrases in requests.
 
 ## Version 3.0-pre.1
 Released 15/11/19

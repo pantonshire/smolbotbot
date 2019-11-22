@@ -1,4 +1,4 @@
-from . import robots, log
+from . import robots, log, data
 
 import re
 import urllib.request
@@ -20,10 +20,8 @@ special_char_re = re.compile("[\*]")
 sanitise_expressions = [picture_re, at_re, hashtag_re, bot_intro_re, special_char_re]
 polish_expressions = [picture_re, bot_intro_re]
 
-blacklist_file = open("data/keyword-blacklist.txt", "r")
-blacklist = [line.lower().strip() for line in blacklist_file]
-blacklist_file.close()
-del blacklist_file
+blacklist = [line.lower().strip() for line in data.read_lines("data/keyword-blacklist.txt")]
+
 stopwords = nltk.corpus.stopwords.words("english")
 blacklist.extend(stopwords)
 

@@ -5,16 +5,12 @@ import re
 import random
 
 
-blacklist_file = open("data/request-blacklist.txt", "r")
-blacklist = set([line.lower().strip() for line in blacklist_file])
-blacklist_file.close()
-del blacklist_file
+blacklist = set([line.lower().strip() for line in data.read_lines("data/request-blacklist.txt")])
+ignore_phrases = [line.lower().strip().split() for line in data.read_lines("data/ignore-phrases.txt")]
 
 random_keywords = ["random"]
 thank_keywords = ["thank", "thanks", "thx", "ty"]
 thank_keywords_fr = ["merci"]
-
-ignore_phrases = data.read_lines("data/ignore-phrases.txt")
 
 hyphen_re = re.compile("(\-(?=\D))|((?<=\S)\-)")
 at_re = re.compile("(?<=^|(?<=[^a-zA-Z0-9-\.]))#[A-Za-z_]+[A-Za-z0-9_]+")

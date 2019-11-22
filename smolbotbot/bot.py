@@ -1,4 +1,4 @@
-from . import robots, robotdata, search, contentgen, accounts, twitter, database, log
+from . import robots, robotdata, search, contentgen, accounts, twitter, database, log, data
 
 import schedule
 import time
@@ -12,7 +12,7 @@ responded_tweets = []
 responded_dms = []
 
 
-saved_responded_tweets = open("state/responded-tweets.txt", "r")
+saved_responded_tweets = open(data.internal_path("state/responded-tweets.txt"), "r")
 for tweet_id in saved_responded_tweets:
     try:
         responded_tweets.append(int(tweet_id.strip()))
@@ -21,7 +21,7 @@ for tweet_id in saved_responded_tweets:
 saved_responded_tweets.close()
 del saved_responded_tweets
 
-saved_responded_dms = open("state/responded-dms.txt", "r")
+saved_responded_dms = open(data.internal_path("state/responded-dms.txt"), "r")
 for dm_id in saved_responded_dms:
     dm_id_stripped = dm_id.strip()
     if dm_id_stripped:
@@ -161,29 +161,25 @@ def contains_ignore(query):
 def load_phrases():
     global greeting_phrases, introduction_phrases
 
-    greetings_file = open("data/greetings.txt", "r")
-    greeting_phrases = [line.strip() for line in greetings_file]
-    greetings_file.close()
+    greeting_phrases = [line.strip() for line in data.read_lines("data/greetings.txt")]
 
     if not greeting_phrases:
         greeting_phrases = ["[INTERNAL ERROR]"]
 
-    intros_file = open("data/botd-intros.txt", "r")
-    introduction_phrases = [line.strip() for line in intros_file]
-    intros_file.close()
+    introduction_phrases = [line.strip() for line in data.read_lines("data.botd-intros.txt")]
 
     if not introduction_phrases:
         introduction_phrases = ["[INTERNAL ERROR]"]
 
 
 def close_bot():
-    tweets_file = open("state/responded-tweets.txt", "w")
+    tweets_file = open(data.internal_path("state/responded-tweets.txt"), "w")
     for tweet_id in responded_tweets:
         tweets_file.write(str(tweet_id) + "\n")
     tweets_file.close()
     log.log("Saved responded tweet ids")
 
-    dms_file = open("state/responded-dms.txt", "w")
+    dms_file = open(data.internal_path("state/responded-dms.txt"), "w")
     for dm_id in responded_dms:
         dms_file.write(dm_id + "\n")
     dms_file.close()
