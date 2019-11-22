@@ -1,7 +1,7 @@
 # Changelog
 
 ## Version 3.0.0
-In development
+Released 22/11/19
 - Restructured the project so that it is contained in a Python package.
 - Added a `setup.py` file for setting up the project.
 - The `data/.api` and `data/.db` files now use a json format.
