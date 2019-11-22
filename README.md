@@ -27,6 +27,10 @@ You will be prompted to provide the following:
 
 If you wish to change any of these later, you can set the Twitter data in `data/.api` the database data in `data/.db`.
 
+Once you have done this, install using the `setup.py` file:
+- `python3 setup.py build`
+- `python3 setup.py install`
+
 ## Changelog
 [The changelog can be found here](https://github.com/Pantonshire/SmolBotBot/blob/master/changelog.md#changelog). I try to update it whenever I add or change something, but it may sometimes be a bit behind!
 
