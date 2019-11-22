@@ -1,11 +1,4 @@
-import robots
-import robotdata
-import search
-import contentgen
-import accounts
-import twitter
-import database
-import log
+from . import robots, robotdata, search, contentgen, accounts, twitter, database, log
 
 import schedule
 import time

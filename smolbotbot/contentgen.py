@@ -1,4 +1,5 @@
-import accounts
+from . import accounts
+
 import random
 
 

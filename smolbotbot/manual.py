@@ -1,9 +1,4 @@
-import twitter
-import database
-import robots
-import robotdata
-import search
-import contentgen
+from . import twitter, database, robots, robotdata, search, contentgen
 
 import time
 

@@ -1,9 +1,9 @@
-import robots
-import initdata
+from . import robots, data
 
 import nltk
 import re
 import random
+
 
 blacklist_file = open("data/request-blacklist.txt", "r")
 blacklist = set([line.lower().strip() for line in blacklist_file])
@@ -14,7 +14,7 @@ random_keywords = ["random"]
 thank_keywords = ["thank", "thanks", "thx", "ty"]
 thank_keywords_fr = ["merci"]
 
-ignore_phrases = initdata.read_lines("data/ignore-phrases.txt")
+ignore_phrases = data.read_lines("data/ignore-phrases.txt")
 
 hyphen_re = re.compile("(\-(?=\D))|((?<=\S)\-)")
 at_re = re.compile("(?<=^|(?<=[^a-zA-Z0-9-\.]))#[A-Za-z_]+[A-Za-z0-9_]+")

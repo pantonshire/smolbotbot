@@ -1,10 +1,10 @@
-import log
+from . import log
 
 import csv
 import random
 import re
-from collections import defaultdict
 
+from collections import defaultdict
 from sqlalchemy import Column, Integer, BigInteger, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import func, or_

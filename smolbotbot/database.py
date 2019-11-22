@@ -1,15 +1,14 @@
-import initdata
+from . import data
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 
-db_connection_data = initdata.read_lines("data/.db")
-uri = db_connection_data[0]
+db_connection_data = data.read_json("data/.db")
 
-engine = create_engine(uri)
+engine = create_engine(db_connection_data["uri"])
 
-del uri, db_connection_data
+del db_connection_data
 
 Session = sessionmaker(bind=engine)
 

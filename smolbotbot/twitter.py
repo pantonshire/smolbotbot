@@ -1,6 +1,4 @@
-import log
-import accounts
-import initdata
+from . import log, accounts, data
 
 import tweepy
 import subprocess as sp
@@ -9,12 +7,12 @@ import os
 import datetime as dt
 
 
-lines = initdata.read_lines("data/.api")
+api_data = data.read_json("data/.api")
 
-auth = tweepy.OAuthHandler(lines[0], lines[1])
-auth.set_access_token(lines[2], lines[3])
+auth = tweepy.OAuthHandler(api_data["key"], api_data["keySecret"])
+auth.set_access_token(api_data["token"], api_data["tokenSecret"])
 
-del lines
+del api_data
 
 api = tweepy.API(auth)
 

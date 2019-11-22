@@ -1,6 +1,7 @@
 import time
 import traceback
 
+
 log_path = "state/log.txt"
 lines = []
 

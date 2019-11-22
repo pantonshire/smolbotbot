@@ -1,10 +1,10 @@
-import robots
-import log
+from . import robots, log
 
 import re
 import urllib.request
 import urllib.error
 import nltk
+
 from bs4 import BeautifulSoup
 
 
