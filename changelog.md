@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 3.0.1
+Released 27/11/19
+- `data_setup.py` file now creates the `state/` directory and the necessary files in it.
+
 ## Version 3.0.0
 Released 22/11/19
 - Restructured the project so that it is contained in a Python package.
