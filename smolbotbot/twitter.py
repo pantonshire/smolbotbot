@@ -38,7 +38,7 @@ def mentions(count, max_seconds_ago, id_blacklist):
 
 def recent_tweets(user, max_seconds_ago):
     return [(tweet.retweeted_status if hasattr(tweet, "retweeted_status") else tweet)
-            for tweet in api.user_timeline("@" + user, tweet_mode="extended")
+            for tweet in api.user_timeline("@" + user, tweet_mode="extended", include_ext_alt_text=True)
             if tweet.user.screen_name == user and (dt.datetime.now() - tweet.created_at).seconds < max_seconds_ago]
 
 

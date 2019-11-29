@@ -5,8 +5,6 @@ import urllib.request
 import urllib.error
 import nltk
 
-from bs4 import BeautifulSoup
-
 
 bot_intro_lookahead_re = re.compile("(\s*\-?\d+\)\s+[\w\-]+bot(?=\w*\W))")
 bot_intro_re = re.compile("(\s*\-?\d+\)\s+[\w\-]+bot\w*\W)")
@@ -51,41 +49,23 @@ def generate_robot_data(session, tweet):
     if robots.exists(session, number, name):
         return False
 
+    timestamp = int(tweet.created_at.timestamp())
     text = tweet_text
     src = ""
     alt = ""
 
-    try:
-        # Get the tweet page
-        page = urllib.request.urlopen("https://twitter.com/smolrobots/status/%d" % (tweet_id))
-        content = page.read()
-        dom = BeautifulSoup(content, features="lxml")
-
-        # Get the text, image src and image alt from the page
-        tweet_container = dom.body.find(class_="tweet", attrs={"data-associated-tweet-id": str(tweet_id)})
-        text = tweet_container.find(class_="tweet-text").text
-        image = tweet_container.find(class_="AdaptiveMedia-container").find("img")
-        src = image.get("src")
-        alt = image.get("alt")
-
-    except urllib.error.HTTPError:
-        log.log_error("HTTP error when getting page for robot with id %d" % (tweet_id))
-        return False
-
-    except AttributeError:
-        log.log_error("Error parsing robot page with id %d" % (tweet_id))
-        pass # Do not return false if an element was not found; some data may still be available
+    if hasattr(tweet, "extended_entities") and "media" in tweet.extended_entities:
+        images = [media for media in tweet.extended_entities["media"] if media["type"] in ["photo", "animated_gif"]]
+        if images:
+            image = images[0]
+            if "media_url_https" in image and image["media_url_https"]:
+                src = image["media_url_https"]
+            if "ext_alt_text" in image and image["ext_alt_text"]:
+                alt = image["ext_alt_text"]
 
     # Sanitise the description and alt text
     sanitised_text = split_compound_words(sanitise(text, sanitise_expressions))
     sanitised_alt = split_compound_words(sanitise(alt, sanitise_expressions))
-
-    polished_text = sanitise(text, polish_expressions)
-    polished_alt = sanitise(alt, polish_expressions)
-
-    # Find all mentions and hashtags
-    mentions = at_re.findall(polished_text)
-    hashtags = hashtag_re.findall(polished_text)
 
     # Tokenise description and alt text
     text_tokens = classify(tokenise(sanitised_text))
@@ -102,7 +82,8 @@ def generate_robot_data(session, tweet):
     # Remove duplicates
     tags = list(dict.fromkeys(tags))
 
-    timestamp = int(tweet.created_at.timestamp())
+    polished_text = sanitise(text, polish_expressions)
+    polished_alt = sanitise(alt, polish_expressions)
 
     robots.add(session, number, name, tweet_id, timestamp, polished_text, src, polished_alt, tags)
 
