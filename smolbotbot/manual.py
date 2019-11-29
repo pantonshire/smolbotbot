@@ -4,7 +4,7 @@ import time
 
 
 def add_robot(tweetid):
-    database.accessdb(robotdata.generate_robot_data, twitter.api.get_status(tweetid, tweet_mode="extended"))
+    database.accessdb(robotdata.generate_robot_data, twitter.api.get_status(tweetid, tweet_mode="extended", include_ext_alt_text=True))
 
 
 def search_for(query):
