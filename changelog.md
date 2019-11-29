@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 3.1.0
+Released 29/11/19
+- Removed the following dependencies: BeautifulSoup4, LXML.
+- Robot images and alt texts are now found using the Twitter API.
+- Added support for animated GIFs in robot data.
+
 ## Version 3.0.1
 Released 27/11/19
 - `data_setup.py` file now creates the `state/` directory and the necessary files in it.

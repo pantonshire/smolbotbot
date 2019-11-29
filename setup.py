@@ -10,7 +10,7 @@ with open("README.md", "r") as readme_file:
 
 setup(
     name="smolbotbot",
-    version="3.0.1",
+    version="3.1.0",
     url="https://github.com/Pantonshire/SmolBotBot",
     license=license,
     author="Tom Panton",
