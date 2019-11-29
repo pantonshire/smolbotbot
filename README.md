@@ -36,8 +36,6 @@ Once you have done this, install using the `setup.py` file:
 
 ## Dependencies
 - [Tweepy](https://github.com/tweepy/tweepy)
-- [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/)
-- [LXML](https://github.com/lxml/lxml)
 - [NLTK](http://www.nltk.org/)
 - [Schedule](https://github.com/dbader/schedule)
 - [SQLAlchemy](https://www.sqlalchemy.org)

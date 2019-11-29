@@ -20,7 +20,7 @@ setup(
     long_description_content_type='text/markdown',
     python_requires=">=3.5.0",
     packages=find_packages(exclude=["tests"]),
-    install_requires=["tweepy", "beautifulsoup4", "lxml", "nltk", "schedule", "sqlalchemy"],
+    install_requires=["tweepy", "nltk", "schedule", "sqlalchemy"],
     extras_require={ "thesaurus": ["vocabulary"] },
     include_package_data=True,
     package_data={ "": ["data/*", "data/.api", "data/.db", "state/*"] }
