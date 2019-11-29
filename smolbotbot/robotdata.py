@@ -10,13 +10,13 @@ bot_intro_lookahead_re = re.compile("(\s*\-?\d+\)\s+[\w\-]+bot(?=\w*\W))")
 bot_intro_re = re.compile("(\s*\-?\d+\)\s+[\w\-]+bot\w*\W)")
 at_re = re.compile("(?<=^|(?<=[^a-zA-Z0-9-\.]))@[A-Za-z_]+[A-Za-z0-9_]+")
 hashtag_re = re.compile("(?<=^|(?<=[^a-zA-Z0-9-\.]))#[A-Za-z_]+[A-Za-z0-9_]+")
-picture_re = re.compile("pic\.twitter\.com/\S+")
+url_re = re.compile("http(s)?://\S+")
 compound_word_re = re.compile("(?<=\w)[\-\/](?=\w)")
 trailing_punctuation_re = re.compile("((^\W+)|(\W+$))")
 special_char_re = re.compile("[\*]")
 
-sanitise_expressions = [picture_re, at_re, hashtag_re, bot_intro_re, special_char_re]
-polish_expressions = [picture_re, bot_intro_re]
+sanitise_expressions = [url_re, at_re, hashtag_re, bot_intro_re, special_char_re]
+polish_expressions = [url_re, bot_intro_re]
 
 blacklist = [line.lower().strip() for line in data.read_lines("data/keyword-blacklist.txt")]
 
@@ -50,7 +50,6 @@ def generate_robot_data(session, tweet):
         return False
 
     timestamp = int(tweet.created_at.timestamp())
-    text = tweet_text
     src = ""
     alt = ""
 
@@ -64,7 +63,7 @@ def generate_robot_data(session, tweet):
                 alt = image["ext_alt_text"]
 
     # Sanitise the description and alt text
-    sanitised_text = split_compound_words(sanitise(text, sanitise_expressions))
+    sanitised_text = split_compound_words(sanitise(tweet_text, sanitise_expressions))
     sanitised_alt = split_compound_words(sanitise(alt, sanitise_expressions))
 
     # Tokenise description and alt text
@@ -82,7 +81,7 @@ def generate_robot_data(session, tweet):
     # Remove duplicates
     tags = list(dict.fromkeys(tags))
 
-    polished_text = sanitise(text, polish_expressions)
+    polished_text = sanitise(tweet_text, polish_expressions)
     polished_alt = sanitise(alt, polish_expressions)
 
     robots.add(session, number, name, tweet_id, timestamp, polished_text, src, polished_alt, tags)
