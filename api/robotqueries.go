@@ -4,24 +4,24 @@ import (
 	"database/sql"
 )
 
-func makeAPIQueries(db *sql.DB) map[string]*sql.Stmt {
+func makeRobotQueries(db *sql.DB) map[string]*sql.Stmt {
 	const table = "robots"
 
-	apiQueries := map[string]*sql.Stmt{
+	robotQueries := map[string]*sql.Stmt{
 		"byName":   prepareSelectAll(db, table, equalsCondition("name")),
 		"byPrefix": prepareSelectAll(db, table, equalsCondition("prefix")),
 		"byTag":    prepareSelectAll(db, table, "WHERE tags LIKE ? OR tags LIKE ? OR tags LIKE ? OR tags LIKE ?"),
 		"latest":   prepareSelectAll(db, table, "ORDER BY timestamp DESC LIMIT ?"),
 	}
 
-	addNumericQueries(db, table, apiQueries, "ID", "id")
-	addNumericQueries(db, table, apiQueries, "Number", "number")
-	addNumericQueries(db, table, apiQueries, "Timestamp", "timestamp")
+	addNumericQueries(db, table, robotQueries, "ID", "id")
+	addNumericQueries(db, table, robotQueries, "Number", "number")
+	addNumericQueries(db, table, robotQueries, "Timestamp", "timestamp")
 
-	return apiQueries
+	return robotQueries
 }
 
-func closeAPIQueries(queries map[string]*sql.Stmt) {
+func closeRobotQueries(queries map[string]*sql.Stmt) {
 	for _, stmt := range queries {
 		stmt.Close()
 	}
