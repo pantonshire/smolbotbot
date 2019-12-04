@@ -1,5 +1,12 @@
 package api
 
+import (
+	"encoding/json"
+	"log"
+)
+
+const smallRobotsPage, smallRobotsStatus = "https://twitter.com/smolrobots", smallRobotsPage + "/status"
+
 // Robot represents a small robot stored in the database.
 type Robot struct {
 	ID     int `json:"id"`
@@ -26,6 +33,17 @@ type Robot struct {
 }
 
 // Link returns the URL of the original tweet that robot originates from.
-func (robot *Robot) Link() string {
-	return "https://twitter.com/smolrobots/status/" + robot.Tweet.ID
+func (robot Robot) Link() string {
+	return smallRobotsStatus + "/" + robot.Tweet.ID
+}
+
+// ToJSON returns the json representation of robot.
+func (robot Robot) ToJSON() string {
+	jsonData, err := json.Marshal(robot)
+
+	if err != nil {
+		log.Panic(err)
+	}
+
+	return string(jsonData)
 }
