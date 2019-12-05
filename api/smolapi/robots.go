@@ -1,4 +1,4 @@
-package api
+package smolapi
 
 import (
 	"encoding/json"

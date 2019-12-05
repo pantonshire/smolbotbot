@@ -1,4 +1,4 @@
-package api
+package smolapi
 
 import (
 	"database/sql"
@@ -46,8 +46,8 @@ func robotsResponse(writer http.ResponseWriter, request *http.Request, robots []
 	json.NewEncoder(writer).Encode(robots)
 }
 
-func (api API) latest(writer http.ResponseWriter, request *http.Request, n int) {
-	robotsResponse(writer, request, runSelectRobots(api.Database, api.RobotQueries["latest"], n))
+func (api API) latest(writer http.ResponseWriter, request *http.Request, numRobots int) {
+	robotsResponse(writer, request, runSelectRobots(api.Database, api.RobotQueries["latest"], numRobots))
 }
 
 // LatestRobot makes a json response of the latest small robot in the database.
@@ -69,7 +69,7 @@ func (api API) LatestRobots(writer http.ResponseWriter, request *http.Request) {
 // ByTag makes a json response of the small robots with the tag.
 func (api API) ByTag(writer http.ResponseWriter, request *http.Request) {
 	tag := chi.URLParam(request, "tag")
-	centre, left, right := "% "+tag+" %", "% "+tag, tag+" %"
+	centre, left, right := "% "+tag+" %", tag+" %", "% "+tag
 	result := runSelectRobots(api.Database, api.RobotQueries["byTag"], tag, centre, left, right)
 	robotsResponse(writer, request, result)
 }
