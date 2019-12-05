@@ -51,7 +51,7 @@ func (api API) NewRouter() http.Handler {
 		}
 	})
 
-	router.Get("/latest/", func(writer http.ResponseWriter, request *http.Request) {
+	router.Get("/latest", func(writer http.ResponseWriter, request *http.Request) {
 		api.latest(writer, request, 1)
 	})
 

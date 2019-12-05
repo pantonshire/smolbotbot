@@ -18,7 +18,7 @@ func prepareSelectAll(db *sql.DB, table string, modifiers string) *sql.Stmt {
 }
 
 func runSelectRobots(db *sql.DB, stmt *sql.Stmt, args ...interface{}) []Robot {
-	rows, err := stmt.Query(args)
+	rows, err := stmt.Query(args...)
 
 	if err != nil {
 		log.Panic(err)
