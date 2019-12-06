@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
-	// Blank import used because the MySQL must be loaded but does not need to be directly accessed.
+	// Blank import used because the MySQL driver must be loaded but does not need to be directly accessed.
 	_ "github.com/go-sql-driver/mysql"
 )
 
