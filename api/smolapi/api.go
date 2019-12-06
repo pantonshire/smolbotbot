@@ -70,23 +70,49 @@ func (api API) NewRouter() http.Handler {
 		robotsResponse(writer, request, result)
 	})
 
-	for _, valueName := range []string{"id", "number", "timestamp"} {
-		router.Get("/"+valueName+"/from/{from}/to/{to}", func(writer http.ResponseWriter, request *http.Request) {
-			api.numericValueRange(writer, request, valueName)
-		})
+	router.Get("/id/from/{from}/to/{to}", func(writer http.ResponseWriter, request *http.Request) {
+		api.numericValueRange(writer, request, "id")
+	})
 
-		router.Get("/"+valueName+"/from/{from}", func(writer http.ResponseWriter, request *http.Request) {
-			api.numericValue(writer, request, "from", valueName)
-		})
+	router.Get("/id/from/{from}", func(writer http.ResponseWriter, request *http.Request) {
+		api.numericValue(writer, request, "from", "id")
+	})
 
-		router.Get("/"+valueName+"/to/{to}", func(writer http.ResponseWriter, request *http.Request) {
-			api.numericValue(writer, request, "to", valueName)
-		})
+	router.Get("/id/to/{to}", func(writer http.ResponseWriter, request *http.Request) {
+		api.numericValue(writer, request, "to", "id")
+	})
 
-		router.Get("/"+valueName+"/{by}", func(writer http.ResponseWriter, request *http.Request) {
-			api.numericValue(writer, request, "by", valueName)
-		})
-	}
+	router.Get("/id/{by}", func(writer http.ResponseWriter, request *http.Request) {
+		api.numericValue(writer, request, "by", "id")
+	})
+
+	router.Get("/number/from/{from}/to/{to}", func(writer http.ResponseWriter, request *http.Request) {
+		api.numericValueRange(writer, request, "number")
+	})
+
+	router.Get("/number/from/{from}", func(writer http.ResponseWriter, request *http.Request) {
+		api.numericValue(writer, request, "from", "number")
+	})
+
+	router.Get("/number/to/{to}", func(writer http.ResponseWriter, request *http.Request) {
+		api.numericValue(writer, request, "to", "number")
+	})
+
+	router.Get("/number/{by}", func(writer http.ResponseWriter, request *http.Request) {
+		api.numericValue(writer, request, "by", "number")
+	})
+
+	router.Get("/timestamp/from/{from}/to/{to}", func(writer http.ResponseWriter, request *http.Request) {
+		api.numericValueRange(writer, request, "timestamp")
+	})
+
+	router.Get("/timestamp/from/{from}", func(writer http.ResponseWriter, request *http.Request) {
+		api.numericValue(writer, request, "from", "timestamp")
+	})
+
+	router.Get("/timestamp/to/{to}", func(writer http.ResponseWriter, request *http.Request) {
+		api.numericValue(writer, request, "to", "timestamp")
+	})
 
 	return router
 }
