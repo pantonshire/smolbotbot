@@ -14,9 +14,10 @@ Session = sessionmaker(bind=engine)
 
 
 def accessdb(create_transaction, *args):
+    result = None
     session = Session()
     try:
-        create_transaction(session, *args)
+        result = create_transaction(session, *args)
         session.commit()
     except:
         session.rollback()
@@ -24,3 +25,4 @@ def accessdb(create_transaction, *args):
     finally:
         session.close()
         session = None
+    return result

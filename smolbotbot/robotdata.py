@@ -28,7 +28,7 @@ stemmer = nltk.stem.PorterStemmer()
 key_token_types = ["N", "J"]
 
 
-def generate_robot_data(session, tweet, overwrite=False):
+def generate_robot_data(session, tweet, update=False):
     tweet_id = tweet.id
     tweet_text = tweet.full_text
 
@@ -46,7 +46,7 @@ def generate_robot_data(session, tweet, overwrite=False):
     name = intro_data[1]
 
     # Check if the robot is already indexed
-    if robots.exists(session, number, name) and not overwrite:
+    if robots.exists(session, number, name) and not update:
         return False
 
     timestamp = int(tweet.created_at.timestamp())
@@ -84,7 +84,10 @@ def generate_robot_data(session, tweet, overwrite=False):
     polished_text = sanitise(tweet_text, polish_expressions, lowercase=False)
     polished_alt = sanitise(alt, polish_expressions, lowercase=False)
 
-    robots.add(session, number, name, tweet_id, timestamp, polished_text, src, polished_alt, tags)
+    if update:
+        robots.update(session, number, name, tweet_id, timestamp, polished_text, src, polished_alt, tags)
+    else:
+        robots.add(session, number, name, tweet_id, timestamp, polished_text, src, polished_alt, tags)
 
     return True
 

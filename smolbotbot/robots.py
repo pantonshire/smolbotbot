@@ -112,13 +112,29 @@ def add(session, number, name, tweet_id, timestamp, description, img_url, alt, t
         description=description,
         imgurl=img_url,
         alt=alt,
-        tags=" ".join(sorted(tags)).lower()
+        tags=get_formatted_tags(tags)
     )
     session.add(robot)
 
 
+def update(session, number, name, tweet_id, timestamp, description, img_url, alt, tags):
+    query(session).filter_by(number=number, name=name).update({
+        Robot.prefix: get_name_prefix(name),
+        Robot.tweetid: tweet_id,
+        Robot.timestamp: timestamp,
+        Robot.description: description,
+        Robot.imgurl: img_url,
+        Robot.alt: alt,
+        Robot.tags: get_formatted_tags(tags)
+    })
+
+
 def get_name_prefix(name):
     return bot_suffix_re.sub("", name.lower())
+
+
+def get_formatted_tags(tags):
+    return " ".join(sorted(tags)).lower()
 
 
 bot_suffix_re = re.compile("bot(s)?$")
