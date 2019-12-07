@@ -20,13 +20,13 @@ def result_search(query):
 
 def data_search(query):
     return database.accessdb(
-        lambda session, q : [robot.as_dict for robot in search.search(session, q)["robots"]],
+        lambda session, q : [robot.as_dict() for robot in search.search(session, q)["robots"]],
         query
     )
 
 
 def all_robot_data():
-    database.accessdb(lambda session : [robot.as_dict for robot in robots.query(session).all()])
+    return database.accessdb(lambda session : [robot.as_dict() for robot in robots.query(session).all()])
 
 
 def time_task(task, *args):
