@@ -28,7 +28,7 @@ stemmer = nltk.stem.PorterStemmer()
 key_token_types = ["N", "J"]
 
 
-def generate_robot_data(session, tweet):
+def generate_robot_data(session, tweet, overwrite=False):
     tweet_id = tweet.id
     tweet_text = tweet.full_text
 
@@ -46,7 +46,7 @@ def generate_robot_data(session, tweet):
     name = intro_data[1]
 
     # Check if the robot is already indexed
-    if robots.exists(session, number, name):
+    if robots.exists(session, number, name) and not overwrite:
         return False
 
     timestamp = int(tweet.created_at.timestamp())
@@ -81,16 +81,18 @@ def generate_robot_data(session, tweet):
     # Remove duplicates
     tags = list(dict.fromkeys(tags))
 
-    polished_text = sanitise(tweet_text, polish_expressions)
-    polished_alt = sanitise(alt, polish_expressions)
+    polished_text = sanitise(tweet_text, polish_expressions, lowercase=False)
+    polished_alt = sanitise(alt, polish_expressions, lowercase=False)
 
     robots.add(session, number, name, tweet_id, timestamp, polished_text, src, polished_alt, tags)
 
     return True
 
 
-def sanitise(text, expressions):
-    sanitised = text.lower().strip()
+def sanitise(text, expressions, lowercase=True):
+    sanitised = text.strip()
+    if lowercase:
+        sanitised = sanitised.lower()
     for expression in expressions:
         sanitised = expression.sub("", sanitised).strip()
     return sanitised
