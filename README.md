@@ -1,6 +1,8 @@
 # Smolbotbot
 A Twitter chatbot for looking up [Small Robots](https://twitter.com/smolrobots) robots.  
-Written for Python 3.
+This repository also includes the API for accessing the data collected by the bot.
+
+The bot is written in Python 3 and the API is written in Go.
 
 ## Overview
 - On Twitter, mention [@smolbotbot](https://twitter.com/smolbotbot) in a tweet or send a direct message with some search terms for the small robot you're looking for. The bot will find the best matches (up to 4) and return links to each of the original tweets.
