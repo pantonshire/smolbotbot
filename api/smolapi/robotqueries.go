@@ -12,6 +12,7 @@ func makeRobotQueries(db *sql.DB) map[string]*sql.Stmt {
 		"byprefix": prepareSelectAll(db, table, equalsCondition("prefix")),
 		"bytag":    prepareSelectAll(db, table, "WHERE tags LIKE ? OR tags LIKE ? OR tags LIKE ? OR tags LIKE ?"),
 		"latest":   prepareSelectAll(db, table, "ORDER BY timestamp DESC LIMIT ?"),
+		"random":   prepareSelectAll(db, table, "ORDER BY RAND() LIMIT ?"),
 	}
 
 	addNumericQueries(db, table, robotQueries, "id")

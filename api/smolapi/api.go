@@ -47,12 +47,22 @@ func (api API) NewRouter() http.Handler {
 
 	router.Get("/latest/{n}", func(writer http.ResponseWriter, request *http.Request) {
 		if n, err := integerURLParam(writer, request, "n"); err == nil {
-			api.latest(writer, request, n)
+			api.limitedQuery(writer, request, "latest", n)
 		}
 	})
 
 	router.Get("/latest", func(writer http.ResponseWriter, request *http.Request) {
-		api.latest(writer, request, 1)
+		api.limitedQuery(writer, request, "latest", 1)
+	})
+
+	router.Get("/random/{n}", func(writer http.ResponseWriter, request *http.Request) {
+		if n, err := integerURLParam(writer, request, "n"); err == nil {
+			api.limitedQuery(writer, request, "random", n)
+		}
+	})
+
+	router.Get("/random", func(writer http.ResponseWriter, request *http.Request) {
+		api.limitedQuery(writer, request, "random", 1)
 	})
 
 	router.Get("/name/{name}", func(writer http.ResponseWriter, request *http.Request) {
@@ -138,8 +148,12 @@ func (api API) simpleQuery(writer http.ResponseWriter, request *http.Request, qu
 	robotsResponse(writer, request, queryResult)
 }
 
-func (api API) latest(writer http.ResponseWriter, request *http.Request, numRobots int) {
-	robotsResponse(writer, request, runSelectRobots(api.Database, api.RobotQueries["latest"], numRobots))
+func (api API) limitedQuery(writer http.ResponseWriter, request *http.Request, query string, numRobots int) {
+	robotsResponse(writer, request, runSelectRobots(api.Database, api.RobotQueries[query], numRobots))
+}
+
+func (api API) random(writer http.ResponseWriter, request *http.Request, numRobots int) {
+	robotsResponse(writer, request, runSelectRobots(api.Database, api.RobotQueries["random"], numRobots))
 }
 
 func (api API) numericValueRange(writer http.ResponseWriter, request *http.Request, valueName string) {
