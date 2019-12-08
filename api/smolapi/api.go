@@ -12,6 +12,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+const maxResponseSize int = 100
+
 // API stores a pointer to the DB and pointers to queries needed for the api.
 type API struct {
 	Database     *sql.DB
@@ -129,7 +131,15 @@ func (api API) NewRouter() http.Handler {
 
 func robotsResponse(writer http.ResponseWriter, request *http.Request, robots []Robot) {
 	writer.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(writer).Encode(robots)
+	json.NewEncoder(writer).Encode(limitResponseSize(robots, maxResponseSize))
+}
+
+func limitResponseSize(robots []Robot, maxSize int) []Robot {
+	if len(robots) > maxSize {
+		return robots[:maxSize]
+	}
+
+	return robots
 }
 
 func integerURLParam(writer http.ResponseWriter, request *http.Request, paramName string) (int, error) {
