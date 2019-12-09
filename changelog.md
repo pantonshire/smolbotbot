@@ -4,6 +4,7 @@
 In development
 - Robot descriptions and alt texts are no longer stored in lowercase.
 - Added more functions to `manual.py` for more manual control.
+- An API for accessing data collected by the bot, written in Go, is now included in the repository.
 
 ## Version 3.1.0
 Released 29/11/19
