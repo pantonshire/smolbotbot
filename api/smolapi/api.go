@@ -21,7 +21,7 @@ type API struct {
 }
 
 // NewAPI creates a new database and robot queries, and packages them into an API struct.
-func NewAPI(username string, password string, host string, dbname string) *API {
+func NewAPI(username string, password string, host string, dbname string) API {
 	db, err := sql.Open("mysql", username+":"+password+"@("+host+")/"+dbname)
 
 	if err != nil {
@@ -34,7 +34,7 @@ func NewAPI(username string, password string, host string, dbname string) *API {
 		log.Panic(err)
 	}
 
-	return &API{Database: db, RobotQueries: makeRobotQueries(db)}
+	return API{Database: db, RobotQueries: makeRobotQueries(db)}
 }
 
 // Close closes the database and queries associated with the API.
