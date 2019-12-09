@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 3.2.0
+In development
+- Robot descriptions and alt texts are no longer stored in lowercase.
+- Added more functions to `manual.py` for more manual control.
+
 ## Version 3.1.0
 Released 29/11/19
 - Removed the following dependencies: BeautifulSoup4, LXML.
