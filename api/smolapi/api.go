@@ -16,7 +16,10 @@ import (
 
 const maxResponseSize int = 100
 
-var apiLimiter = rate.NewLimiter(2, 10)
+const bucketSize = 10
+const refillRate = 1
+
+var apiLimiter = rate.NewLimiter(refillRate, bucketSize)
 
 func limit(toLimit http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
