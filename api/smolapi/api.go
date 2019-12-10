@@ -7,12 +7,26 @@ import (
 	"net/http"
 	"strconv"
 
+	"golang.org/x/time/rate"
+
 	"github.com/go-chi/chi"
 	// Blank import used because the MySQL driver must be loaded but does not need to be directly accessed.
 	_ "github.com/go-sql-driver/mysql"
 )
 
 const maxResponseSize int = 100
+
+var apiLimiter = rate.NewLimiter(2, 10)
+
+func limit(toLimit http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if apiLimiter.Allow() {
+			toLimit.ServeHTTP(writer, request)
+		} else {
+			http.Error(writer, http.StatusText(429), http.StatusTooManyRequests)
+		}
+	})
+}
 
 // API stores a pointer to the DB and pointers to queries needed for the api.
 type API struct {
@@ -126,7 +140,7 @@ func (api API) NewRouter() http.Handler {
 		api.numericValue(writer, request, "to", "timestamp")
 	})
 
-	return router
+	return limit(router)
 }
 
 func robotsResponse(writer http.ResponseWriter, request *http.Request, robots []Robot) {
