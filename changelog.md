@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 3.2.1
+In development
+- The API is now rate limited using a simple token bucket with tentative values for the limit.
+
 ## Version 3.2.0
 Released 09/12/19
 - Robot descriptions and alt texts are no longer stored in lowercase.
