@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
+    "github.com/go-chi/cors"
 	// Blank import used because the MySQL driver must be loaded but does not need to be directly accessed.
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -46,6 +47,16 @@ func (api API) Close() {
 // NewRouter creates a new chi router for the API that can be mounted into the main router.
 func (api API) NewRouter() http.Handler {
 	router := chi.NewRouter()
+
+    cors := cors.New(cors.Options{
+        AllowedOrigins:   []string{"*"},
+        AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+        AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+        AllowCredentials: true,
+        MaxAge:           300,
+    })
+
+    router.Use(cors.Handler)
 
 	router.Get("/latest/{n}", func(writer http.ResponseWriter, request *http.Request) {
 		if n, err := integerURLParam(writer, request, "n"); err == nil {
