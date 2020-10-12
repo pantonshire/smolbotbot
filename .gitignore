@@ -1,17 +1,14 @@
-.api
-.db
-
+# OS
 .DS_Store
 
+# IDE
 .idea
 .vscode
 
-build/
-dist/
-*.egg-info/
+# Binaries
+/bot
+/migrator
 
-__pycache__
-
-state
-old
-temp
+# Config
+/config
+config.json

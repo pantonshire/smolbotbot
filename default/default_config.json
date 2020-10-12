@@ -1,0 +1,11 @@
+{
+  "db": {
+    "host": "",
+    "database": "",
+    "user": "",
+    "password": "",
+    "charset": "utf8mb4",
+    "loc": "Local",
+    "debug": false
+  }
+}
