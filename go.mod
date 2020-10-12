@@ -1,4 +1,4 @@
-module smolbotbot
+module github.com/pantonshire/smolbotbot
 
 go 1.15
 
