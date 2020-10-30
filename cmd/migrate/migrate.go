@@ -2,8 +2,9 @@ package main
 
 import (
   "github.com/jessevdk/go-flags"
+  "github.com/pantonshire/smolbotbot"
+  "github.com/pantonshire/smolbotbot/database"
   "os"
-  "smolbotbot"
 )
 
 func main() {
@@ -25,7 +26,7 @@ func main() {
   if err != nil {
     panic(err)
   }
-  db, err := smolbotbot.ConnectMysql(config.DB)
+  db, err := database.Connect(config.DB)
   if err != nil {
     panic(err)
   }

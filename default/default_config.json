@@ -1,11 +1,23 @@
 {
   "db": {
-    "host": "",
+    "host": "localhost",
+    "port": 3306,
     "database": "",
     "user": "",
     "password": "",
     "charset": "utf8mb4",
-    "loc": "Local",
+    "timezone": "Local",
     "debug": false
+  },
+  "goldcrest": {
+    "is_remote": true,
+    "local": {
+      "client_timeout_seconds": 5
+    },
+    "remote": {
+      "host": "localhost",
+      "port": 7400,
+      "client_timeout_seconds": 5
+    }
   }
 }

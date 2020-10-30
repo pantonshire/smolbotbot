@@ -2,6 +2,8 @@ package smolbotbot
 
 import (
   "encoding/json"
+  "github.com/pantonshire/goldcrest/twitter1"
+  "github.com/pantonshire/smolbotbot/database"
   "io/ioutil"
   "path/filepath"
 )
@@ -11,17 +13,26 @@ type Options struct {
 }
 
 type Config struct {
-  DB DatabaseConfig `json:"db"`
+  DB        database.Config `json:"db"`
+  Goldcrest GoldcrestConfig `json:"goldcrest"`
 }
 
-type DatabaseConfig struct {
-  Host     string `json:"host"`
-  Database string `json:"database"`
-  User     string `json:"user"`
-  Password string `json:"password"`
-  Charset  string `json:"charset"`
-  Loc      string `json:"loc"`
-  Debug    bool   `json:"debug"`
+type GoldcrestConfig struct {
+  IsRemote bool                  `json:"is_remote"`
+  Auth     twitter1.AuthPair     `json:"auth"`
+  Local    GoldcrestLocalConfig  `json:"local"`
+  Remote   GoldcrestRemoteConfig `json:"remote"`
+}
+
+type GoldcrestLocalConfig struct {
+  Twitter        twitter1.TwitterConfig `json:"twitter"`
+  TimeoutSeconds uint                   `json:"timeout_seconds"`
+}
+
+type GoldcrestRemoteConfig struct {
+  Host           string `json:"host"`
+  Port           uint   `json:"port"`
+  TimeoutSeconds uint   `json:"timeout_seconds"`
 }
 
 func LoadConfig(configPath string) (Config, error) {

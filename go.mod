@@ -8,4 +8,5 @@ require (
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/jinzhu/gorm v1.9.16
+	github.com/pantonshire/goldcrest v0.0.0-20201012161550-0e85807e0602
 )

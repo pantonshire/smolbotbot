@@ -1,16 +1,20 @@
 GO := go
 GO_BUILD := $(GO) build
 
+ifndef $(BUILD_TAGS)
+BUILD_TAGS := mysql
+endif
+
 build: migrator
 
 clean:
 	rm migrator
 
-migrate: migrator
+migrate: migrator config.json
 	@ ./$< -c config.json
 
-migrator: config.json
-	$(GO_BUILD) -o $@ cmd/migrate/migrate.go
+migrator:
+	$(GO_BUILD) -tags $(BUILD_TAGS) -o $@ cmd/migrate/migrate.go
 
 config.json:
 	cp default/default_config.json $@
