@@ -9,11 +9,11 @@ import (
 
 const Dialect = "mysql"
 
+const defaultTimezone = "Local"
+
 func (config Config) connectionStr() string {
-  var host string
-  if config.Host != "" {
-    host = config.Host
-  } else {
+  host := config.Host
+  if host == "" {
     host = localhost
   }
 
@@ -24,6 +24,11 @@ func (config Config) connectionStr() string {
     socket = host
   }
 
+  timezone := config.Timezone
+  if timezone == "" {
+    timezone = defaultTimezone
+  }
+
   return fmt.Sprintf("%s:%s@(%s)/%s?charset=%s&parseTime=True&loc=%s",
-    config.User, config.Password, socket, config.Database, config.Charset, config.Timezone)
+    config.User, config.Password, socket, config.Database, config.Charset, timezone)
 }
