@@ -1,4 +1,4 @@
-// +build mysql
+// +build mysql !postgre
 
 package database
 
