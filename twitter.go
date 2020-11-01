@@ -5,7 +5,7 @@ import (
   "time"
 )
 
-func newTwitterClient(config GoldcrestConfig) twitter1.Client {
+func NewTwitterClient(config GoldcrestConfig) twitter1.Client {
   if config.IsRemote {
     return twitter1.Remote(nil, config.Auth, time.Second*time.Duration(config.Local.TimeoutSeconds))
   } else {
