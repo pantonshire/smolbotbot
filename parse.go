@@ -1,8 +1,7 @@
 package smolbotbot
 
 import (
-  "github.com/pantonshire/goldcrest/twitter1"
-  "github.com/pantonshire/smolbotbot/model"
+  "sort"
   "strconv"
   "strings"
   "unicode"
@@ -20,30 +19,49 @@ func (name botName) singular() botName {
   return botName{prefix: name.prefix, suffix: makeBotSuffixSingular(name.suffix)}
 }
 
-func parseRobotTweet(tweet twitter1.Tweet) []model.Robot {
-  const groupedRobotLimit = 5
-
-  parts := strings.SplitN(tweet.Text, ")", 2)
-  if len(parts) != 2 {
-    return nil
-  }
-
-  minNumber, maxNumber, ok := extractNumbers(parts[0])
-  if !ok {
-    return nil
-  }
-  if maxNumber > minNumber+groupedRobotLimit {
-    maxNumber = minNumber + groupedRobotLimit
-  }
-
-  body := strings.TrimSpace(parts[1])
-
-
-}
-
-func generateTags(robot model.Robot) []model.Tag {
-  
-}
+//func parseRobotTweet(tweet twitter1.Tweet) []model.Robot {
+//  const groupedRobotLimit = 5
+//
+//  parts := strings.SplitN(tweet.Text, ")", 2)
+//  if len(parts) != 2 {
+//    return nil
+//  }
+//
+//  minNumber, maxNumber, ok := extractNumbers(parts[0])
+//  if !ok {
+//    return nil
+//  }
+//  if maxNumber > minNumber+groupedRobotLimit {
+//    maxNumber = minNumber + groupedRobotLimit
+//  }
+//
+//  body := strings.TrimSpace(parts[1])
+//
+//  intro, description := strutils.SplitOnPred(body, 3, func(buf []rune) (bool, int) {
+//    if len(buf) >= 2 {
+//      r0, r1 := buf[0], buf[1]
+//      if (r0 == '.' || r0 == ':' || r0 == ';' || r0 == '!' || r0 == '?') && unicode.IsSpace(r1) {
+//        return true, 0
+//      }
+//
+//      if len(buf) >= 3 {
+//        r2 := buf[2]
+//        if unicode.IsSpace(r0) && (r1 == '-' || r1 == '\u2013' || r1 == '\u2014') && unicode.IsSpace(r2) {
+//          return true, 0
+//        }
+//      }
+//    }
+//    return false, 0
+//  })
+//
+//  intro, description = strings.TrimSpace(intro), strings.TrimSpace(description)
+//
+//  names := extractBotNames(intro, maxNumber-minNumber+1)
+//}
+//
+//func generateTags(robot model.Robot) []model.Tag {
+//
+//}
 
 // Attempts to extract a range of robot numbers from a tweet robot number prefix.
 // Returns the minimum number, the maximum number and a boolean to indicate whether or not any numbers
@@ -134,19 +152,44 @@ func extractBotNames(text string, n int) []botName {
   if n < 1 {
     return nil
   }
-  //TODO: support for *any* whitespace after a full stop
-  intro := dropSubstringAt(text, ". ")
-  //TODO: can't split on full stop because of R.O.B.O.T.S.
-  //TODO: maybe split on ". " instead?
-  if parts := strings.FieldsFunc(text, func(r rune) bool {
-    return r == '.' || r == ':' || r == ';'
-  }); len(parts) == 0 {
-    return nil
-  } else {
-    intro = strings.TrimSpace(parts[0])
-  }
-  fields := strings.Fields(intro)
 
+  var names []botName
+  var nonNames []string
+  var nameIndices, nonNameIndices []int
+
+  for i, tok := range strings.Fields(text) {
+    if name, ok := parseBotName(tok); ok {
+      names = append(names, name)
+      if n--; n == 0 {
+        return names
+      }
+      nameIndices = append(nameIndices, i)
+    } else {
+      nonNames = append(nonNames, tok)
+      nonNameIndices = append(nonNameIndices, i)
+    }
+  }
+
+  nameSort := func(i, j int) bool {
+    return nameIndices[i] < nameIndices[j]
+  }
+
+  for i, tok := range nonNames {
+    tok = strings.TrimFunc(tok, func(r rune) bool {
+      return !(unicode.IsLetter(r) || unicode.IsNumber(r))
+    })
+    if strings.ToLower(tok) != "and" {
+      names = append(names, botName{prefix: tok, suffix: "bot"})
+      nameIndices = append(nameIndices, nonNameIndices[i])
+      if n--; n == 0 {
+        sort.Slice(names, nameSort)
+        return names
+      }
+    }
+  }
+
+  sort.Slice(names, nameSort)
+  return names
 }
 
 func dropSubstringAt(s, sep string) string {
