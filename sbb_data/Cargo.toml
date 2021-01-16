@@ -1,0 +1,12 @@
+[package]
+name = "sbb_data"
+version = "0.1.0"
+authors = ["Pantonshire <tom@tomandtally.co.uk>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+diesel = { version = "1.4", features = ["postgres", "chrono"] }
+dotenv = "0.15"
+chrono = "0.4"
