@@ -1,0 +1,6 @@
+[workspace]
+members = [
+  "sbb_data",
+  "sbb_parse",
+  "experiment",
+]
