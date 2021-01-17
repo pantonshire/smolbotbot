@@ -20,8 +20,7 @@ pub struct Robot {
     pub robot_number: i32,
     pub prefix: String,
     pub suffix: String,
-    pub suffix_singular: String,
-    pub name_raw: String,
+    pub plural: Option<String>,
 }
 
 #[derive(Identifiable, Queryable, Associations, Clone, Debug)]

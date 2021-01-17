@@ -19,8 +19,7 @@ pub struct NewRobot<'a> {
     pub robot_number: i32,
     pub prefix: &'a str,
     pub suffix: &'a str,
-    pub suffix_singular: &'a str,
-    pub name_raw: &'a str,
+    pub plural: Option<&'a str>,
 }
 
 #[derive(Insertable)]

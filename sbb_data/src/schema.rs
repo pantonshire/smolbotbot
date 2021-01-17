@@ -37,8 +37,7 @@ table! {
         robot_number -> Int4,
         prefix -> Text,
         suffix -> Text,
-        suffix_singular -> Text,
-        name_raw -> Text,
+        plural -> Nullable<Text>,
     }
 }
 
