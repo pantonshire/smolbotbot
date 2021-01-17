@@ -8,9 +8,7 @@ pub struct RobotGroup {
     pub tweet_id: i64,
     pub tweet_time: NaiveDateTime,
     pub image_url: Option<String>,
-    pub original_names: String,
     pub body: String,
-    pub original_body: String,
     pub alt: Option<String>,
 }
 

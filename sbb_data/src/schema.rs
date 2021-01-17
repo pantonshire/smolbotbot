@@ -25,9 +25,7 @@ table! {
         tweet_id -> Int8,
         tweet_time -> Timestamp,
         image_url -> Nullable<Text>,
-        original_names -> Text,
         body -> Text,
-        original_body -> Text,
         alt -> Nullable<Text>,
     }
 }

@@ -8,9 +8,7 @@ pub struct NewRobotGroup<'a> {
     pub tweet_id: i64,
     pub tweet_time: NaiveDateTime,
     pub image_url: Option<&'a str>,
-    pub original_names: &'a str,
     pub body: &'a str,
-    pub original_body: &'a str,
     pub alt: Option<&'a str>,
 }
 
