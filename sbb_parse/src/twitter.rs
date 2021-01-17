@@ -23,7 +23,7 @@ pub fn parse_tweet<F, T>(tweet: &Tweet, handler: F) -> Option<T> where F: Fn(New
         })
         .next();
 
-    let image_url = image.map(|image| image.url.expanded_url.as_str());
+    let image_url = image.map(|image| image.media_url.as_str());
 
     let alt = image.and_then(|image| {
         let alt = image.alt.trim();
