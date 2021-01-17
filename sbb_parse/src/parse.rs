@@ -280,7 +280,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse() {
+    fn test_parse_group() {
         use super::{parse_group, Robot};
         assert_eq!(parse_group("1207) Transrightsbot. Is just here to let all its trans pals know that they are valid and they are loved! \u{1f3f3}\u{fe0f}\u{200d}\u{26a7}\u{fe0f}\u{2764}\u{fe0f}\u{1f916}"), Some((vec![Robot { number: 1207, name: RobotName { prefix: "Transrights", suffix: "bot", plural: None } }], "Is just here to let all its trans pals know that they are valid and they are loved! \u{1f3f3}\u{fe0f}\u{200d}\u{26a7}\u{fe0f}\u{2764}\u{fe0f}\u{1f916}")));
         assert_eq!(parse_group("558/9) Salt- and Pepperbots. Bring you salt and pepper."), Some((vec![Robot { number: 558, name: RobotName { prefix: "Salt", suffix: "bot", plural: None } }, Robot { number: 559, name: RobotName { prefix: "Pepper", suffix: "bot", plural: None } }], "Bring you salt and pepper.")));
