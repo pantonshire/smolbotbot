@@ -1,5 +1,7 @@
 mod parse;
 
+pub use parse::parse_group;
+
 #[cfg(test)]
 mod tests {
     #[test]
