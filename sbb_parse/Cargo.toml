@@ -1,11 +1,14 @@
 [package]
 name = "sbb_parse"
 version = "0.1.0"
-authors = ["Pantonshire <tom@tomandtally.co.uk>"]
+authors = ["Tom Panton <pantonshire@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+twitter = ["goldcrest", "sbb_data"]
 
 [dependencies]
+sbb_data = { path = "../sbb_data", optional = true }
+goldcrest = { git = "https://github.com/Pantonshire/goldcrest", optional = true }
 lazy_static = "1.4"
 regex = "1"
