@@ -1,27 +1,57 @@
 use std::ops::Range;
 use lazy_static::lazy_static;
 use regex::Regex;
-use chrono::NaiveDateTime;
-
-use sbb_data::new::*;
-use std::borrow::Borrow;
 
 type ParseOut<'a, T> = Option<(&'a str, T)>;
 
-#[derive(PartialEq, Eq, Debug)]
-struct RobotName<'a> {
-    prefix: &'a str,
-    suffix: &'a str,
-    plural: Option<&'a str>,
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct Robot<'a> {
+    pub number: i32,
+    pub name: RobotName<'a>,
 }
 
-pub fn parse_group(text: &str, tweet_id: i64, tweet_time: NaiveDateTime, image_url: Option<&str>, alt: Option<&str>) -> Option<(Vec<NewRobot>, &str)> {
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct RobotName<'a> {
+    pub prefix: &'a str,
+    pub suffix: &'a str,
+    pub plural: Option<&'a str>,
+}
+
+pub fn parse_group(text: &str) -> Option<(Vec<Robot>, &str)> {
     const MAX_GROUP_SIZE: usize = 5;
 
+    lazy_static! {
+        // Meaning                             | Regex fragment
+        // =====================================================
+        // Word character                      | \w
+        // Zero or more of any character       |   .*
+        // End of string                       |     $
+        static ref BODY_RE: Regex = Regex::new(r"\w.*$").unwrap();
+    }
+
     let (s, n_range) = parse_numbers(text)?;
+
     let (s, (names, partial_names)) = parse_names(s, n_range.len().min(MAX_GROUP_SIZE))?;
 
-    None
+    let body = BODY_RE
+        .find(s)
+        .map(|m| m.as_str())
+        .unwrap_or("");
+
+    let robots = names
+        .into_iter()
+        .enumerate()
+        .map(|(i, name)| Robot{
+            number: n_range.start + (i as i32),
+            name: if partial_names {
+                RobotName{ plural: None, ..name }
+            } else {
+                name
+            },
+        })
+        .collect::<Vec<Robot>>();
+
+    Some((robots, body))
 }
 
 fn parse_numbers(s: &str) -> ParseOut<Range<i32>> {
@@ -247,5 +277,13 @@ mod tests {
         assert_eq!(parse_names("Saltbot and pepperbot.", 2), Some((".", (vec![RobotName{ prefix: "Salt", suffix: "bot", plural: None }, RobotName{ prefix: "pepper", suffix: "bot", plural: None }], false))));
         assert_eq!(parse_names("Saltbot and pepperbot.", 3), Some((".", (vec![RobotName{ prefix: "Salt", suffix: "bot", plural: None }, RobotName{ prefix: "pepper", suffix: "bot", plural: None }], false))));
         assert_eq!(parse_names("Salt- and pepperbots.", 2), Some((".", (vec![RobotName{ prefix: "Salt", suffix: "bot", plural: Some("s") }, RobotName{ prefix: "pepper", suffix: "bot", plural: Some("s") }], true))));
+    }
+
+    #[test]
+    fn test_parse() {
+        use super::{parse_group, Robot};
+        assert_eq!(parse_group("1207) Transrightsbot. Is just here to let all its trans pals know that they are valid and they are loved! \u{1f3f3}\u{fe0f}\u{200d}\u{26a7}\u{fe0f}\u{2764}\u{fe0f}\u{1f916}"), Some((vec![Robot { number: 1207, name: RobotName { prefix: "Transrights", suffix: "bot", plural: None } }], "Is just here to let all its trans pals know that they are valid and they are loved! \u{1f3f3}\u{fe0f}\u{200d}\u{26a7}\u{fe0f}\u{2764}\u{fe0f}\u{1f916}")));
+        assert_eq!(parse_group("558/9) Salt- and Pepperbots. Bring you salt and pepper."), Some((vec![Robot { number: 558, name: RobotName { prefix: "Salt", suffix: "bot", plural: None } }, Robot { number: 559, name: RobotName { prefix: "Pepper", suffix: "bot", plural: None } }], "Bring you salt and pepper.")));
+        assert_eq!(parse_group("690 - 692) Marybot, Josephbot and Donkeybot. For complicated tax reasons, Marybot and Josephbot are forced to temporarily relocate to Bethlehem, just as Marybot recieves a mysterious package from Gabrielbot on behalf of Godbot Labs."), Some((vec![Robot { number: 690, name: RobotName { prefix: "Mary", suffix: "bot", plural: None } }, Robot { number: 691, name: RobotName { prefix: "Joseph", suffix: "bot", plural: None } }, Robot { number: 692, name: RobotName { prefix: "Donkey", suffix: "bot", plural: None } }], "For complicated tax reasons, Marybot and Josephbot are forced to temporarily relocate to Bethlehem, just as Marybot recieves a mysterious package from Gabrielbot on behalf of Godbot Labs.")));
     }
 }

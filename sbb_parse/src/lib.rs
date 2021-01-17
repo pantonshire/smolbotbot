@@ -1,6 +1,6 @@
 mod parse;
 
-pub use parse::parse_group;
+pub use parse::{parse_group, Robot};
 
 #[cfg(test)]
 mod tests {
