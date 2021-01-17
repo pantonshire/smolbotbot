@@ -1,0 +1,12 @@
+[package]
+name = "sbb_scribe"
+version = "0.1.0"
+authors = ["Tom Panton <pantonshire@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+sbb_data = { path = "../sbb_data" }
+sbb_parse = { path = "../sbb_parse", features = ["twitter"] }
+goldcrest = { git = "https://github.com/Pantonshire/goldcrest" }
+diesel = { version = "1.4", features = ["postgres", "chrono"] }
+chrono = "0.4"
