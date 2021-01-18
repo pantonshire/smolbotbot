@@ -21,6 +21,7 @@ pub struct Robot {
     pub prefix: String,
     pub suffix: String,
     pub plural: Option<String>,
+    pub ident: String,
 }
 
 #[derive(Identifiable, Queryable, Associations, Clone, Debug)]

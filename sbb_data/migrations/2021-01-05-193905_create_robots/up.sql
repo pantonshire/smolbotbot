@@ -4,5 +4,6 @@ CREATE TABLE robots (
   robot_number    INTEGER NOT NULL,
   prefix          TEXT NOT NULL,
   suffix          TEXT NOT NULL,
-  plural          TEXT
+  plural          TEXT,
+  ident           TEXT NOT NULL
 );

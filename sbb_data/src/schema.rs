@@ -38,6 +38,7 @@ table! {
         prefix -> Text,
         suffix -> Text,
         plural -> Nullable<Text>,
+        ident -> Text,
     }
 }
 

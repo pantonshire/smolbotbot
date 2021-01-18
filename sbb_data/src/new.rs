@@ -20,6 +20,7 @@ pub struct NewRobot<'a> {
     pub prefix: &'a str,
     pub suffix: &'a str,
     pub plural: Option<&'a str>,
+    pub ident: &'a str,
 }
 
 #[derive(Insertable)]
