@@ -12,3 +12,4 @@ sbb_data = { path = "../sbb_data", optional = true }
 goldcrest = { git = "https://github.com/Pantonshire/goldcrest", optional = true }
 lazy_static = "1.4"
 regex = "1"
+unidecode = "0.3"

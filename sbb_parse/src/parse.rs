@@ -17,6 +17,26 @@ pub struct RobotName<'a> {
     pub plural: Option<&'a str>,
 }
 
+impl RobotName {
+    pub fn identifier(&self) -> String {
+        use unidecode::unidecode;
+
+        lazy_static! {
+            static ref NON_WORD_RE: Regex = Regex::new(r"\W+").unwrap();
+        }
+
+        let ascii = unidecode(self.prefix);
+
+        let mut ident = Regex::new(r"\W+").unwrap()
+            .replace_all(&ascii, "")
+            .to_lowercase();
+
+        ident.retain(|c| !c.is_whitespace());
+
+        ident
+    }
+}
+
 pub fn parse_group(text: &str) -> Option<(Vec<Robot>, &str)> {
     const MAX_GROUP_SIZE: usize = 5;
 
