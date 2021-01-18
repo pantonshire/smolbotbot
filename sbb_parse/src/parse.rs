@@ -17,7 +17,7 @@ pub struct RobotName<'a> {
     pub plural: Option<&'a str>,
 }
 
-impl RobotName {
+impl RobotName<'_> {
     pub fn identifier(&self) -> String {
         use unidecode::unidecode;
 
