@@ -2,7 +2,7 @@ use chrono::{NaiveDateTime, NaiveDate};
 
 use crate::schema::*;
 
-#[derive(Insertable)]
+#[derive(Insertable, Clone, Debug)]
 #[table_name="robot_groups"]
 pub struct NewRobotGroup<'a> {
     pub tweet_id: i64,
@@ -12,7 +12,7 @@ pub struct NewRobotGroup<'a> {
     pub alt: Option<&'a str>,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Clone, Debug)]
 #[table_name="robots"]
 pub struct NewRobot<'a> {
     pub robot_group_id: i32,
@@ -23,28 +23,28 @@ pub struct NewRobot<'a> {
     pub ident: &'a str,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Clone, Debug)]
 #[table_name="tags"]
 pub struct NewTag<'a> {
     pub robot_group_id: i32,
     pub tag: &'a str,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Clone, Debug)]
 #[table_name="past_dailies"]
 pub struct NewPastDaily {
     pub posted_on: NaiveDate,
     pub robot_id: i32,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Clone, Debug)]
 #[table_name="scheduled_dailies"]
 pub struct NewScheduledDaily {
     pub post_on: NaiveDate,
     pub robot_id: i32,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Clone, Debug)]
 #[table_name="reply_tweets"]
 pub struct NewReplyTweet<'a> {
     pub request_tweet_id: i64,
