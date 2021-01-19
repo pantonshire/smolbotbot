@@ -27,6 +27,7 @@ table! {
         image_url -> Nullable<Text>,
         body -> Text,
         alt -> Nullable<Text>,
+        content_warning -> Nullable<Text>,
     }
 }
 

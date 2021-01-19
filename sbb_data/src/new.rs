@@ -10,6 +10,7 @@ pub struct NewRobotGroup<'a> {
     pub image_url: Option<&'a str>,
     pub body: &'a str,
     pub alt: Option<&'a str>,
+    pub content_warning: Option<&'a str>,
 }
 
 #[derive(Insertable, Clone, Debug)]

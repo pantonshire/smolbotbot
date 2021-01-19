@@ -14,7 +14,7 @@ pub fn parse_tweet<F, T>(tweet: &Tweet, handler: F) -> Option<T> where F: Fn(New
 
     let text = tweet.text(text_opts);
 
-    let (robots, body) = parse_group(&text)?;
+    let (robots, body, cw) = parse_group(&text)?;
 
     let image = tweet.media
         .iter()
@@ -40,6 +40,7 @@ pub fn parse_tweet<F, T>(tweet: &Tweet, handler: F) -> Option<T> where F: Fn(New
         image_url,
         body: body.trim_end(),
         alt,
+        content_warning: cw,
     };
     
     Some(handler(group, robots))

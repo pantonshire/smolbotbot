@@ -37,7 +37,7 @@ impl RobotName<'_> {
     }
 }
 
-pub fn parse_group(text: &str) -> Option<(Vec<Robot>, &str)> {
+pub fn parse_group(text: &str) -> Option<(Vec<Robot>, &str, Option<&str>)> {
     const MAX_GROUP_SIZE: usize = 5;
 
     lazy_static! {
@@ -49,7 +49,11 @@ pub fn parse_group(text: &str) -> Option<(Vec<Robot>, &str)> {
         static ref BODY_RE: Regex = Regex::new(r"\w.*$").unwrap();
     }
 
-    let (s, n_range) = parse_numbers(text)?;
+    let s = text.trim();
+
+    let (s, cw) = parse_cw(s)?;
+
+    let (s, n_range) = parse_numbers(s)?;
 
     let (s, (names, partial_names)) = parse_names(s, n_range.len().min(MAX_GROUP_SIZE))?;
 
@@ -71,7 +75,23 @@ pub fn parse_group(text: &str) -> Option<(Vec<Robot>, &str)> {
         })
         .collect::<Vec<Robot>>();
 
-    Some((robots, body))
+    Some((robots, body, cw))
+}
+
+pub fn parse_cw(s: &str) -> ParseOut<Option<&str>> {
+    lazy_static! {
+        static ref CW_RE: Regex = Regex::new(r"[\[\(][Cc][Nn]:\s*(\S[^\]\)]+)[\]\)]").unwrap();
+    }
+
+    let captures = match CW_RE.captures(s) {
+        Some(cs) => cs,
+        None     => return Some((s, None)),
+    };
+
+    let match_end = captures.get(0).unwrap().end();
+    let warning_type = captures.get(1).unwrap().as_str().trim();
+
+    Some((s[match_end..].trim_start(), Some(warning_type)))
 }
 
 fn parse_numbers(s: &str) -> ParseOut<Range<i32>> {
@@ -302,8 +322,9 @@ mod tests {
     #[test]
     fn test_parse_group() {
         use super::{parse_group, Robot};
-        assert_eq!(parse_group("1207) Transrightsbot. Is just here to let all its trans pals know that they are valid and they are loved! \u{1f3f3}\u{fe0f}\u{200d}\u{26a7}\u{fe0f}\u{2764}\u{fe0f}\u{1f916}"), Some((vec![Robot { number: 1207, name: RobotName { prefix: "Transrights", suffix: "bot", plural: None } }], "Is just here to let all its trans pals know that they are valid and they are loved! \u{1f3f3}\u{fe0f}\u{200d}\u{26a7}\u{fe0f}\u{2764}\u{fe0f}\u{1f916}")));
-        assert_eq!(parse_group("558/9) Salt- and Pepperbots. Bring you salt and pepper."), Some((vec![Robot { number: 558, name: RobotName { prefix: "Salt", suffix: "bot", plural: None } }, Robot { number: 559, name: RobotName { prefix: "Pepper", suffix: "bot", plural: None } }], "Bring you salt and pepper.")));
-        assert_eq!(parse_group("690 - 692) Marybot, Josephbot and Donkeybot. For complicated tax reasons, Marybot and Josephbot are forced to temporarily relocate to Bethlehem, just as Marybot recieves a mysterious package from Gabrielbot on behalf of Godbot Labs."), Some((vec![Robot { number: 690, name: RobotName { prefix: "Mary", suffix: "bot", plural: None } }, Robot { number: 691, name: RobotName { prefix: "Joseph", suffix: "bot", plural: None } }, Robot { number: 692, name: RobotName { prefix: "Donkey", suffix: "bot", plural: None } }], "For complicated tax reasons, Marybot and Josephbot are forced to temporarily relocate to Bethlehem, just as Marybot recieves a mysterious package from Gabrielbot on behalf of Godbot Labs.")));
+        assert_eq!(parse_group("1207) Transrightsbot. Is just here to let all its trans pals know that they are valid and they are loved! \u{1f3f3}\u{fe0f}\u{200d}\u{26a7}\u{fe0f}\u{2764}\u{fe0f}\u{1f916}"), Some((vec![Robot { number: 1207, name: RobotName { prefix: "Transrights", suffix: "bot", plural: None } }], "Is just here to let all its trans pals know that they are valid and they are loved! \u{1f3f3}\u{fe0f}\u{200d}\u{26a7}\u{fe0f}\u{2764}\u{fe0f}\u{1f916}", None)));
+        assert_eq!(parse_group("558/9) Salt- and Pepperbots. Bring you salt and pepper."), Some((vec![Robot { number: 558, name: RobotName { prefix: "Salt", suffix: "bot", plural: None } }, Robot { number: 559, name: RobotName { prefix: "Pepper", suffix: "bot", plural: None } }], "Bring you salt and pepper.", None)));
+        assert_eq!(parse_group("690 - 692) Marybot, Josephbot and Donkeybot. For complicated tax reasons, Marybot and Josephbot are forced to temporarily relocate to Bethlehem, just as Marybot recieves a mysterious package from Gabrielbot on behalf of Godbot Labs."), Some((vec![Robot { number: 690, name: RobotName { prefix: "Mary", suffix: "bot", plural: None } }, Robot { number: 691, name: RobotName { prefix: "Joseph", suffix: "bot", plural: None } }, Robot { number: 692, name: RobotName { prefix: "Donkey", suffix: "bot", plural: None } }], "For complicated tax reasons, Marybot and Josephbot are forced to temporarily relocate to Bethlehem, just as Marybot recieves a mysterious package from Gabrielbot on behalf of Godbot Labs.", None)));
+        assert_eq!(parse_group("[CN: sexual assault] 651) Believeherbot. Reminds you to believe the testimony of women survivors of sexual assault; reminds you to look at the gendered power structures in place before you dismiss them as unreliable; reminds you that this is the fucking turning point."), Some((vec![Robot { number: 651, name: RobotName { prefix: "Believeher", suffix: "bot", plural: None } }], "Reminds you to believe the testimony of women survivors of sexual assault; reminds you to look at the gendered power structures in place before you dismiss them as unreliable; reminds you that this is the fucking turning point.", Some("sexual assault"))));
     }
 }

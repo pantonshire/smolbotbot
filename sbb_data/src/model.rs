@@ -10,6 +10,7 @@ pub struct RobotGroup {
     pub image_url: Option<String>,
     pub body: String,
     pub alt: Option<String>,
+    pub content_warning: Option<String>,
 }
 
 #[derive(Identifiable, Queryable, Associations, Clone, Debug)]
