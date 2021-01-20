@@ -5,7 +5,7 @@ use crate::schema::*;
 #[derive(Insertable, Clone, Debug)]
 #[table_name="robot_groups"]
 pub struct NewRobotGroup<'a> {
-    pub tweet_id: i64,
+    pub tweet_id: i64, //Cast u64 to i64 to obtain this, then cast back to u64 when retrieving the group
     pub tweet_time: NaiveDateTime,
     pub image_url: Option<&'a str>,
     pub body: &'a str,

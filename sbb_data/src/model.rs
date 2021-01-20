@@ -5,7 +5,7 @@ use crate::schema::*;
 #[derive(Identifiable, Queryable, Clone, Debug)]
 pub struct RobotGroup {
     pub id: i32,
-    pub tweet_id: i64,
+    pub tweet_id: i64, //Cast this as u64 to use
     pub tweet_time: NaiveDateTime,
     pub image_url: Option<String>,
     pub body: String,
