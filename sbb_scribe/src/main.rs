@@ -2,16 +2,20 @@ mod error;
 
 use std::env;
 use std::cmp::min;
-use std::iter::FromIterator;
 use std::sync::Arc;
 use chrono::{prelude::*, Duration};
-use diesel::Connection;
+use diesel::prelude::*;
+use diesel::{Connection, select, QueryDsl};
 use diesel::result::{Error::DatabaseError, DatabaseErrorKind};
 
 use goldcrest::request::TweetOptions;
 
 use sbb_parse::twitter::{parse_tweet, new_robot};
 use sbb_data::Create;
+use diesel::expression::exists::exists;
+use goldcrest::data::Tweet;
+
+use error::{ScribeError, ScribeResult};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,14 +46,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Arc::new(client.connect().await?);
 
-    scribe_ids(client, &db_conn, tweet_ids, true).await?;
+    scribe_ids(client, &db_conn, &tweet_ids, true).await?;
 
     Ok(())
 }
 
 //TODO: buffered variant which calls scribe_ids multiple times on slices of the ids
 
-async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &diesel::PgConnection, mut tweet_ids: Vec<u64>, show_status: bool) -> Result<(Vec<u64>, Vec<u64>, Vec<u64>), Box<dyn std::error::Error>> {
+async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &PgConnection, tweet_ids: &[u64], show_status: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
+    let mut tweet_ids = tweet_ids.to_vec();
     tweet_ids.sort();
     tweet_ids.dedup();
     let n_tweet_ids = tweet_ids.len();
@@ -66,7 +71,7 @@ async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &diesel::PgConnecti
                 client
                     .get_tweets(ids, TweetOptions::default())
                     .await
-                    .map_err(|_| error::ScribeError::TweetGetFailure)
+                    .map_err(|_| ScribeError::TweetGetFailure)
             }));
             assigned = max_id;
         }
@@ -91,23 +96,16 @@ async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &diesel::PgConnecti
 
     for tweet in tweets {
         let tweet = tweet.original();
-        let parse_res = parse_tweet(&tweet, |group, robots| {
-            db_conn.transaction::<(), diesel::result::Error, _>(|| {
-                let group_id = group.create(&db_conn)?.id;
-                for ref robot in robots {
-                    new_robot(robot, group_id, |robot| {
-                        robot.create(&db_conn)
-                    })?;
-                }
-                Ok(())
-            })
-        });
-
-        match parse_res {
-            None => &mut unparsed_ids,
-            Some(Err(DatabaseError(DatabaseErrorKind::UniqueViolation, _))) => &mut existing_ids,
-            Some(Err(err)) => return Err(Box::new(err)),
-            Some(Ok(())) => &mut parsed_ids,
+        let res = scribe(db_conn, &tweet);
+        match res {
+            Ok(Some(_group_id)) => &mut parsed_ids,
+            Ok(None) => &mut unparsed_ids,
+            Err(err) => match err {
+                ScribeError::DbError(DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => &mut existing_ids,
+                ScribeError::TweetAlreadyExists => &mut existing_ids,
+                ScribeError::RobotAlreadyExists => &mut existing_ids,
+                err => return Err(err),
+            },
         }.push(tweet.id);
 
         n_tweets_done += 1;
@@ -118,4 +116,43 @@ async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &diesel::PgConnecti
     }
 
     Ok((parsed_ids, unparsed_ids, existing_ids))
+}
+
+fn scribe(db_conn: &PgConnection, tweet: &Tweet) -> ScribeResult<Option<i32>> {
+    db_conn.transaction::<Option<i32>, ScribeError, _>(|| {
+        if !tweet_unique(&db_conn, tweet)? {
+            return Err(ScribeError::TweetAlreadyExists);
+        }
+        let parse_res = parse_tweet::<_, ScribeResult<i32>>(tweet, |group, robots| {
+            let group_id = group.create(&db_conn)?.id;
+            for ref robot in robots {
+                if !robot_unique(&db_conn, robot)? {
+                    return Err(ScribeError::RobotAlreadyExists);
+                }
+                new_robot(robot, group_id, |robot| {
+                    robot.create(&db_conn)
+                })?;
+            }
+            Ok(group_id)
+        });
+        match parse_res {
+            Some(Ok(val)) => Ok(Some(val)),
+            Some(Err(err)) => Err(err),
+            None => Ok(None),
+        }
+    })
+}
+
+fn tweet_unique(db_conn: &PgConnection, tweet: &Tweet) -> ScribeResult<bool> {
+    use sbb_data::schema::robot_groups::dsl::*;
+    select(exists(robot_groups.filter(tweet_id.eq(tweet.id as i64))))
+        .get_result(db_conn)
+        .map_err(|err| err.into())
+}
+
+fn robot_unique(db_conn: &PgConnection, robot: &sbb_parse::Robot) -> ScribeResult<bool> {
+    use sbb_data::schema::robots::dsl::*;
+    select(exists(robots.filter(prefix.eq(robot.name.prefix).and(robot_number.eq(robot.number)))))
+        .get_result(db_conn)
+        .map_err(|err| err.into())
 }
