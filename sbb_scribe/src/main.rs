@@ -1,7 +1,6 @@
 mod error;
 
 use std::env;
-use std::cmp::min;
 use std::sync::Arc;
 use chrono::{prelude::*, Duration};
 use diesel::prelude::*;
@@ -19,7 +18,7 @@ use error::{ScribeError, ScribeResult};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let tweet_ids = include_str!("../tweet_ids");
+    let tweet_ids = include_str!("../tweet_ids_2");
     let tweet_ids = tweet_ids
         .split_whitespace()
         .map(|s| s.parse::<u64>().unwrap())
@@ -51,7 +50,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-//TODO: buffered variant which calls scribe_ids multiple times on slices of the ids
+async fn scribe_ids_batched(client: Arc<goldcrest::Client>, db_conn: &PgConnection, tweet_ids: &[u64], batch_size: usize, show_status: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
+    let mut parsed = Vec::new();
+    let mut unparsed = Vec::new();
+    let mut existing = Vec::new();
+    let n = tweet_ids.len();
+    let mut i: usize = 0;
+    let mut batch_no = 0;
+    while i < n {
+        if show_status {
+            println!("Batch {}", batch_no + 1);
+        }
+        let next_i = (i + batch_size).min(n);
+        let (batch_parsed, batch_unparsed, batch_existing) = scribe_ids(client.clone(), db_conn, &tweet_ids[i..next_i], show_status).await?;
+        parsed.extend(batch_parsed.into_iter());
+        unparsed.extend(batch_unparsed.into_iter());
+        existing.extend(batch_existing.into_iter());
+        i = next_i;
+        batch_no += 1;
+    }
+    Ok((parsed, unparsed, existing))
+}
 
 async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &PgConnection, tweet_ids: &[u64], show_status: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
     let mut tweet_ids = tweet_ids.to_vec();
@@ -64,7 +83,7 @@ async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &PgConnection, twee
         const BATCH_SIZE: usize = 100;
         let mut assigned: usize = 0;
         while assigned < n_tweet_ids {
-            let max_id = min(assigned + BATCH_SIZE, n_tweet_ids);
+            let max_id = (assigned + BATCH_SIZE).min(n_tweet_ids);
             let ids = (&tweet_ids[assigned..max_id]).to_vec();
             let client = client.clone();
             join_handles.push(tokio::spawn(async move {
@@ -120,17 +139,17 @@ async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &PgConnection, twee
 
 fn scribe(db_conn: &PgConnection, tweet: &Tweet) -> ScribeResult<Option<i32>> {
     db_conn.transaction::<Option<i32>, ScribeError, _>(|| {
-        if !tweet_unique(&db_conn, tweet)? {
+        if !tweet_unique(db_conn, tweet)? {
             return Err(ScribeError::TweetAlreadyExists);
         }
         let parse_res = parse_tweet::<_, ScribeResult<i32>>(tweet, |group, robots| {
-            let group_id = group.create(&db_conn)?.id;
+            let group_id = group.create(db_conn)?.id;
             for ref robot in robots {
-                if !robot_unique(&db_conn, robot)? {
+                if !robot_unique(db_conn, robot)? {
                     return Err(ScribeError::RobotAlreadyExists);
                 }
                 new_robot(robot, group_id, |robot| {
-                    robot.create(&db_conn)
+                    robot.create(db_conn)
                 })?;
             }
             Ok(group_id)
@@ -146,13 +165,15 @@ fn scribe(db_conn: &PgConnection, tweet: &Tweet) -> ScribeResult<Option<i32>> {
 fn tweet_unique(db_conn: &PgConnection, tweet: &Tweet) -> ScribeResult<bool> {
     use sbb_data::schema::robot_groups::dsl::*;
     select(exists(robot_groups.filter(tweet_id.eq(tweet.id as i64))))
-        .get_result(db_conn)
+        .get_result::<bool>(db_conn)
         .map_err(|err| err.into())
+        .map(|x| !x)
 }
 
 fn robot_unique(db_conn: &PgConnection, robot: &sbb_parse::Robot) -> ScribeResult<bool> {
     use sbb_data::schema::robots::dsl::*;
     select(exists(robots.filter(prefix.eq(robot.name.prefix).and(robot_number.eq(robot.number)))))
-        .get_result(db_conn)
+        .get_result::<bool>(db_conn)
         .map_err(|err| err.into())
+        .map(|x| !x)
 }
