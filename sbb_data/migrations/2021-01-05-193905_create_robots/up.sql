@@ -5,5 +5,6 @@ CREATE TABLE robots (
   prefix          TEXT NOT NULL,
   suffix          TEXT NOT NULL,
   plural          TEXT,
-  ident           TEXT NOT NULL
+  ident           TEXT NOT NULL,
+  UNIQUE (robot_number, prefix)
 );
