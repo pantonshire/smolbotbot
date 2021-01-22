@@ -305,6 +305,9 @@ mod tests {
         assert_eq!(parse_numbers("2147483646)"), Some(("", 2147483646..2147483647)));
         assert_eq!(parse_numbers("2147483647)"), None);
         assert_eq!(parse_numbers("2147483648)"), None);
+        assert_eq!(parse_numbers("Hello)"), None);
+        assert_eq!(parse_numbers("@foo 123)"), None);
+        assert_eq!(parse_numbers("@foo123)"), None);
     }
 
     #[test]
