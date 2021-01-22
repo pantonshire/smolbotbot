@@ -4,7 +4,7 @@ pub(super) type ScribeResult<T> = std::result::Result<T, ScribeError>;
 
 #[derive(Debug)]
 pub(super) enum ScribeError {
-    TweetGetFailure,
+    TweetGetFailure(goldcrest::error::RequestError),
     TweetAlreadyExists,
     RobotAlreadyExists,
     DbError(diesel::result::Error),
@@ -14,16 +14,22 @@ pub(super) enum ScribeError {
 impl std::fmt::Display for ScribeError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            ScribeError::TweetGetFailure    => write!(fmt, "Failed to get tweet"),
-            ScribeError::TweetAlreadyExists => write!(fmt, "Tweet already exists in database"),
-            ScribeError::RobotAlreadyExists => write!(fmt, "Robot already exists in database"),
-            ScribeError::DbError(err)       => err.fmt(fmt),
-            ScribeError::JoinError(err)     => err.fmt(fmt),
+            ScribeError::TweetGetFailure(err) => err.fmt(fmt),
+            ScribeError::TweetAlreadyExists   => write!(fmt, "Tweet already exists in database"),
+            ScribeError::RobotAlreadyExists   => write!(fmt, "Robot already exists in database"),
+            ScribeError::DbError(err)         => err.fmt(fmt),
+            ScribeError::JoinError(err)       => err.fmt(fmt),
         }
     }
 }
 
 impl Error for ScribeError {}
+
+impl From<goldcrest::error::RequestError> for ScribeError {
+    fn from(err: goldcrest::error::RequestError) -> Self {
+        ScribeError::TweetGetFailure(err)
+    }
+}
 
 impl From<diesel::result::Error> for ScribeError {
     fn from(err: diesel::result::Error) -> Self {

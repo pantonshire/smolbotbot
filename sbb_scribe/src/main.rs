@@ -75,12 +75,14 @@ async fn scribe_ids_batched(client: Arc<goldcrest::Client>, db_conn: &PgConnecti
 }
 
 async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &PgConnection, tweet_ids: &[u64], show_status: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
+    use tokio::task::JoinHandle;
+
     let mut tweet_ids = tweet_ids.to_vec();
     tweet_ids.sort();
     tweet_ids.dedup();
     let n_tweet_ids = tweet_ids.len();
 
-    let mut join_handles = Vec::new();
+    let mut join_handles = Vec::<JoinHandle<ScribeResult<Vec<Tweet>>>>::new();
     {
         const BATCH_SIZE: usize = 100;
         let mut assigned: usize = 0;
@@ -92,7 +94,7 @@ async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &PgConnection, twee
                 client
                     .get_tweets(ids, TweetOptions::default())
                     .await
-                    .map_err(|_| ScribeError::TweetGetFailure)
+                    .map_err(|err| ScribeError::from(err))
             }));
             assigned = max_id;
         }
