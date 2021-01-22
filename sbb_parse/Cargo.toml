@@ -9,7 +9,7 @@ twitter = ["goldcrest", "sbb_data"]
 
 [dependencies]
 sbb_data = { path = "../sbb_data", optional = true }
-goldcrest = { git = "https://github.com/Pantonshire/goldcrest", optional = true }
+goldcrest = { git = "https://github.com/Pantonshire/goldcrest", branch = "main", optional = true }
 lazy_static = "1.4"
 regex = "1"
 unidecode = "0.3"

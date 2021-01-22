@@ -7,8 +7,8 @@ edition = "2018"
 [dependencies]
 sbb_data = { path = "../sbb_data" }
 sbb_parse = { path = "../sbb_parse", features = ["twitter"] }
-goldcrest = { git = "https://github.com/Pantonshire/goldcrest" }
-tokio = { version = "0.2", features = ["full"] }
+goldcrest = { git = "https://github.com/Pantonshire/goldcrest", branch = "main" }
+tokio = { version = "1.0", features = ["full"] }
 diesel = { version = "1.4", features = ["postgres", "chrono"] }
 dotenv = "0.15"
 chrono = "0.4"

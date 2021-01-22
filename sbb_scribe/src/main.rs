@@ -16,6 +16,8 @@ use goldcrest::data::Tweet;
 
 use error::{ScribeError, ScribeResult};
 
+//TODO: option to scribe from user timeline rather than the text file
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tweet_ids = include_str!("../tweet_ids_2");
@@ -34,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let access_token = env::var("TWITTER_ACCESS_TOKEN").unwrap();
     let token_secret = env::var("TWITTER_TOKEN_SECRET").unwrap();
 
-    let auth = goldcrest::Authentication::new(&consumer_key, &consumer_secret, &access_token, &token_secret);
+    let auth = goldcrest::Authentication::new(consumer_key, consumer_secret, access_token, token_secret);
 
     let mut client = goldcrest::ClientBuilder::new();
     client
