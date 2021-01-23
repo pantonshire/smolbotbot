@@ -3,5 +3,4 @@ members = [
   "sbb_data",
   "sbb_parse",
   "sbb_scribe",
-  "experiment",
 ]
