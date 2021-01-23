@@ -3,6 +3,7 @@ name = "sbb_scribe"
 version = "0.1.0"
 authors = ["Tom Panton <pantonshire@gmail.com>"]
 edition = "2018"
+description = "Tool for parsing and storing Small Robots Tweets en masse"
 
 [dependencies]
 sbb_data = { path = "../sbb_data" }
