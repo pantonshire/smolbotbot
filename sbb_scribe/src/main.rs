@@ -36,9 +36,9 @@ struct Opts {
     /// Time maximum time to wait for Goldcrest resource availability in seconds
     #[clap(short, long, default_value = "1000")]
     wait_timeout: i64,
-    /// Do not display progress information
-    #[clap(short, long)]
-    silent: bool,
+    /// Limit output from the command
+    #[clap(short, long, parse(from_occurrences))]
+    silent: u8,
     /// Display new robot Tweet ids when done
     #[clap(long)]
     show_new: bool,
@@ -79,7 +79,8 @@ struct TimelineCommand {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts = Opts::parse();
 
-    let show_status = !opts.silent;
+    let show_summary = opts.silent < 2;
+    let show_progress = opts.silent < 1;
 
     let db_conn = sbb_data::connect_env()?;
 
@@ -122,8 +123,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .collect::<Vec<u64>>();
             
             let (parsed, unparsed, existing) = match file_opts.batch_size {
-                None => scribe_ids(client, &db_conn, &tweet_ids, show_status).await,
-                Some(batch_size) => scribe_ids_batched(client, &db_conn, &tweet_ids, batch_size, show_status).await
+                None => scribe_ids(client, &db_conn, &tweet_ids, show_progress).await,
+                Some(batch_size) => scribe_ids_batched(client, &db_conn, &tweet_ids, batch_size, show_progress).await
             }?;
 
             let mut found = HashSet::<u64>::new();
@@ -147,17 +148,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap_or(timeline_opts.user);
             let user = goldcrest::UserIdentifier::Handle(handle);
 
-            let (parsed, unparsed, existing) = scribe_timeline(&client, &db_conn, user, timeline_opts.page_length, timeline_opts.pages, show_status)
+            let (parsed, unparsed, existing) = scribe_timeline(&client, &db_conn, user, timeline_opts.page_length, timeline_opts.pages, show_progress)
                 .await?;
             
             (parsed, unparsed, existing, None)
         },
     };
 
-    if show_status {
-        println!();
-        println!("\u{1f916} Done!");
-        println!();
+    if show_summary {
+        if show_progress {
+            println!();
+            println!("\u{1f916} Done!");
+            println!();
+        }
+        
         println!("New robot tweets .............. {}", parsed.len());
         println!("Existing robot tweets ......... {}", existing.len());
         println!("Non-robot tweets .............. {}", unparsed.len());
@@ -175,7 +179,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn scribe_timeline(client: &goldcrest::Client, db_conn: &PgConnection, user: goldcrest::UserIdentifier, page_length: u32, pages: usize, show_status: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
+async fn scribe_timeline(client: &goldcrest::Client, db_conn: &PgConnection, user: goldcrest::UserIdentifier, page_length: u32, pages: usize, show_progress: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
     let mut parsed_ids = Vec::new();
     let mut unparsed_ids = Vec::new();
     let mut existing_ids = Vec::new();
@@ -183,7 +187,7 @@ async fn scribe_timeline(client: &goldcrest::Client, db_conn: &PgConnection, use
     let mut max_id = None;
 
     for i in 0..pages {
-        if show_status {
+        if show_progress {
             println!("Page {}", i + 1);
         }
 
@@ -201,7 +205,7 @@ async fn scribe_timeline(client: &goldcrest::Client, db_conn: &PgConnection, use
         tweets.retain(|tweet| tweet.id > 0);
 
         if tweets.is_empty() {
-            if show_status {
+            if show_progress {
                 println!("Empty page, cannot continue");
             }
             break;
@@ -213,13 +217,13 @@ async fn scribe_timeline(client: &goldcrest::Client, db_conn: &PgConnection, use
             .min()
             .unwrap() - 1); //Subtract 1 because, at the time of writing, max_id is inclusive
 
-        let (page_parsed_ids, page_unparsed_ids, page_existing_ids) = scribe_all(db_conn, tweets, show_status)?;
+        let (page_parsed_ids, page_unparsed_ids, page_existing_ids) = scribe_all(db_conn, tweets, show_progress)?;
 
         parsed_ids.extend(page_parsed_ids.into_iter());
         unparsed_ids.extend(page_unparsed_ids.into_iter());
         existing_ids.extend(page_existing_ids.into_iter());
 
-        if show_status {
+        if show_progress {
             println!();
         }
     }
@@ -227,7 +231,7 @@ async fn scribe_timeline(client: &goldcrest::Client, db_conn: &PgConnection, use
     Ok((parsed_ids, unparsed_ids, existing_ids))
 }
 
-async fn scribe_ids_batched(client: Arc<goldcrest::Client>, db_conn: &PgConnection, tweet_ids: &[u64], batch_size: usize, show_status: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
+async fn scribe_ids_batched(client: Arc<goldcrest::Client>, db_conn: &PgConnection, tweet_ids: &[u64], batch_size: usize, show_progress: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
     let mut parsed = Vec::new();
     let mut unparsed = Vec::new();
     let mut existing = Vec::new();
@@ -235,11 +239,11 @@ async fn scribe_ids_batched(client: Arc<goldcrest::Client>, db_conn: &PgConnecti
     let mut i: usize = 0;
     let mut batch_no = 0;
     while i < n {
-        if show_status {
+        if show_progress {
             println!("Batch {}", batch_no + 1);
         }
         let next_i = (i + batch_size).min(n);
-        let (batch_parsed, batch_unparsed, batch_existing) = scribe_ids(client.clone(), db_conn, &tweet_ids[i..next_i], show_status).await?;
+        let (batch_parsed, batch_unparsed, batch_existing) = scribe_ids(client.clone(), db_conn, &tweet_ids[i..next_i], show_progress).await?;
         parsed.extend(batch_parsed.into_iter());
         unparsed.extend(batch_unparsed.into_iter());
         existing.extend(batch_existing.into_iter());
@@ -249,7 +253,7 @@ async fn scribe_ids_batched(client: Arc<goldcrest::Client>, db_conn: &PgConnecti
     Ok((parsed, unparsed, existing))
 }
 
-async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &PgConnection, tweet_ids: &[u64], show_status: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
+async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &PgConnection, tweet_ids: &[u64], show_progress: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
     use tokio::task::JoinHandle;
 
     let mut tweet_ids = tweet_ids.to_vec();
@@ -280,10 +284,10 @@ async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &PgConnection, twee
         tweets.extend(join_handle.await??.into_iter());
     }
 
-    scribe_all(db_conn, tweets, show_status)
+    scribe_all(db_conn, tweets, show_progress)
 }
 
-fn scribe_all(db_conn: &PgConnection, tweets: Vec<Tweet>, show_status: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
+fn scribe_all(db_conn: &PgConnection, tweets: Vec<Tweet>, show_progress: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
     let mut parsed_ids = Vec::new();
     let mut unparsed_ids = Vec::new();
     let mut existing_ids = Vec::new();
@@ -292,7 +296,7 @@ fn scribe_all(db_conn: &PgConnection, tweets: Vec<Tweet>, show_status: bool) -> 
     let mut n_tweets_done = 0;
     let mut last_shown = None;
 
-    if show_status {
+    if show_progress {
         println!();
     }
 
@@ -311,7 +315,7 @@ fn scribe_all(db_conn: &PgConnection, tweets: Vec<Tweet>, show_status: bool) -> 
         }.push(tweet_id);
 
         n_tweets_done += 1;
-        if show_status && (n_tweets_done == n_tweets || last_shown.is_none() || Utc::now() - last_shown.unwrap() > Duration::milliseconds(250)) {
+        if show_progress && (n_tweets_done == n_tweets || last_shown.is_none() || Utc::now() - last_shown.unwrap() > Duration::milliseconds(250)) {
             println!("{}{}Progress: {} / {}", termion::cursor::Up(1), termion::clear::CurrentLine, n_tweets_done, n_tweets);
             last_shown = Some(Utc::now());
         }
