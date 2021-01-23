@@ -107,7 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Arc::new(client.connect().await?);
 
-    match opts.subcommand {
+    let (parsed, unparsed, existing, not_found) = match opts.subcommand {
         Subcommand::File(file_opts) => {
             use std::fs;
 
@@ -137,18 +137,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .filter(|id| !found.contains(id))
                 .collect::<Vec<u64>>();
 
-            if show_status {
-                println!("Done");
-                println!();
-                println!("New robot tweets .............. {}", parsed.len());
-                println!("Existing robot tweets ......... {}", existing.len());
-                println!("Non-robot tweets .............. {}", unparsed.len());
-                println!("Tweets not found by Twitter ... {}", not_found.len());
-                if opts.show_new {
-                    println!();
-                    println!("New robot tweet IDs: {:?}", parsed);
-                }
-            }
+            (parsed, unparsed, existing, Some(not_found))
         },
 
         Subcommand::Timeline(timeline_opts) => {
@@ -161,18 +150,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let (parsed, unparsed, existing) = scribe_timeline(&client, &db_conn, user, timeline_opts.page_length, timeline_opts.pages, show_status)
                 .await?;
             
-            if show_status {
-                println!("Done");
-                println!();
-                println!("New robot tweets .............. {}", parsed.len());
-                println!("Existing robot tweets ......... {}", existing.len());
-                println!("Non-robot tweets .............. {}", unparsed.len());
-                if opts.show_new {
-                    println!();
-                    println!("New robot tweet IDs: {:?}", parsed);
-                }
-            }
+            (parsed, unparsed, existing, None)
         },
+    };
+
+    if show_status {
+        println!();
+        println!("\u{1f916} Done!");
+        println!();
+        println!("New robot tweets .............. {}", parsed.len());
+        println!("Existing robot tweets ......... {}", existing.len());
+        println!("Non-robot tweets .............. {}", unparsed.len());
+
+        if let Some(not_found) = not_found {
+            println!("Tweets not found by Twitter ... {}", not_found.len());
+        }
+
+        if opts.show_new {
+            println!();
+            println!("New robot tweet IDs: {:?}", parsed);
+        }
     }
 
     Ok(())
@@ -204,20 +201,26 @@ async fn scribe_timeline(client: &goldcrest::Client, db_conn: &PgConnection, use
         tweets.retain(|tweet| tweet.id > 0);
 
         if tweets.is_empty() {
-            println!("Empty page, cannot continue");
+            if show_status {
+                println!("Empty page, cannot continue");
+            }
             break;
-        } else {
-            max_id = Some(tweets
-                .iter()
-                .map(|tweet| tweet.id)
-                .min()
-                .unwrap() - 1);
+        }
 
-            let (page_parsed_ids, page_unparsed_ids, page_existing_ids) = scribe_all(db_conn, tweets, show_status)?;
-            
-            parsed_ids.extend(page_parsed_ids.into_iter());
-            unparsed_ids.extend(page_unparsed_ids.into_iter());
-            existing_ids.extend(page_existing_ids.into_iter());
+        max_id = Some(tweets
+            .iter()
+            .map(|tweet| tweet.id)
+            .min()
+            .unwrap() - 1); //Subtract 1 because, at the time of writing, max_id is inclusive
+
+        let (page_parsed_ids, page_unparsed_ids, page_existing_ids) = scribe_all(db_conn, tweets, show_status)?;
+
+        parsed_ids.extend(page_parsed_ids.into_iter());
+        unparsed_ids.extend(page_unparsed_ids.into_iter());
+        existing_ids.extend(page_existing_ids.into_iter());
+
+        if show_status {
+            println!();
         }
     }
 
