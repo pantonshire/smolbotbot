@@ -161,7 +161,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("\u{1f916} Done!");
             println!();
         }
-        
+
         println!("New robot tweets .............. {}", parsed.len());
         println!("Existing robot tweets ......... {}", existing.len());
         println!("Non-robot tweets .............. {}", unparsed.len());
@@ -328,10 +328,11 @@ fn scribe(db_conn: &PgConnection, tweet: Tweet) -> ScribeResult<bool> {
     let tweet = tweet.original();
 
     db_conn.transaction::<bool, ScribeError, _>(|| {
-        if !tweet_unique(db_conn, &tweet)? {
-            return Err(ScribeError::TweetAlreadyExists);
-        }
         let parse_res = parse_tweet::<_, ScribeResult<()>>(&tweet, |group, robots| {
+            // Check for uniqueness after parsing, since parsing is faster than DB access
+            if !tweet_unique(db_conn, &tweet)? {
+                return Err(ScribeError::TweetAlreadyExists);
+            }
             let group_id = group.create(db_conn)?.id;
             for ref robot in robots {
                 if !robot_unique(db_conn, robot)? {
