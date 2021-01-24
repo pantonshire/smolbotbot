@@ -13,25 +13,27 @@ mod function {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_conn = sbb_data::connect_env()?;
-    println!("{:?}", select_robot(&db_conn));
+    println!("{:?}", select_robot(&db_conn, Some(14)));
     Ok(())
 }
 
-fn select_robot(db_conn: &PgConnection) -> QueryResult<Robot> {
+fn select_robot(db_conn: &PgConnection, no_repeat_days: Option<i32>) -> QueryResult<Robot> {
     if let Some(robot) = scheduled_robot(db_conn)? {
         return Ok(robot);
     }
-    random_robot(db_conn)
+    random_robot(db_conn, no_repeat_days)
 }
 
 fn scheduled_robot(db_conn: &PgConnection) -> QueryResult<Option<Robot>> {
     use diesel::dsl::{now, date, exists};
     use schema::*;
+
     let res = robots::table.filter(
             exists(scheduled_dailies::table
                 .filter(robots::id.eq(scheduled_dailies::robot_id)
                     .and(scheduled_dailies::post_on.eq(date(now))))))
         .first(db_conn);
+
     match res {
         Ok(robot) => Ok(Some(robot)),
         Err(diesel::NotFound) => Ok(None),
@@ -39,14 +41,22 @@ fn scheduled_robot(db_conn: &PgConnection) -> QueryResult<Option<Robot>> {
     }
 }
 
-fn random_robot(db_conn: &PgConnection) -> QueryResult<Robot> {
-    use diesel::dsl::{now, date, exists, not, IntervalDsl};
+fn random_robot(db_conn: &PgConnection, no_repeat_days: Option<i32>) -> QueryResult<Robot> {
+    use diesel::dsl::{now, date, not, IntervalDsl};
     use schema::*;
-    const NO_REPEAT_DAYS: i32 = 14;
-    robots::table.filter(
-            not(exists(past_dailies::table
-                .filter(robots::id.eq(past_dailies::robot_id)
-                    .and(past_dailies::posted_on.ge(date(now - NO_REPEAT_DAYS.days())))))))
+
+    let recent_groups: Vec<i32> = match no_repeat_days {
+        Some(days) => past_dailies::table
+            .inner_join(robots::table)
+            .filter(past_dailies::posted_on.ge(date(now - days.days())))
+            .select(robots::robot_group_id)
+            .distinct()
+            .load(db_conn)?,
+        None => Vec::new(),
+    };
+
+    robots::table
+        .filter(not(robots::robot_group_id.eq_any(&recent_groups)))
         .order(function::random)
         .first(db_conn)
 }
