@@ -829,6 +829,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "sbb_botd"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "diesel",
+ "dotenv",
+ "goldcrest",
+ "sbb_data",
+ "tokio",
+]
+
+[[package]]
 name = "sbb_data"
 version = "0.1.0"
 dependencies = [
