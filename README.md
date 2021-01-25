@@ -1,4 +1,7 @@
 # Smolbotbot
+
+![Latest release](https://img.shields.io/github/v/release/pantonshire/smolbotbot)
+
 A Twitter chatbot for looking up [Small Robots](https://twitter.com/smolrobots) robots.  
 This repository also includes the (now deprecated) API for accessing the data collected by the bot.
 
