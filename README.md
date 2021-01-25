@@ -1,8 +1,8 @@
 # Smolbotbot
 A Twitter chatbot for looking up [Small Robots](https://twitter.com/smolrobots) robots.  
-This repository also includes the API for accessing the data collected by the bot.
+This repository also includes the (now deprecated) API for accessing the data collected by the bot.
 
-The bot is written in Python 3 and the API is written in Go.
+The bot is written in Rust and the API is written in Go.
 
 ## Overview
 - On Twitter, mention [@smolbotbot](https://twitter.com/smolbotbot) in a tweet or send a direct message with some search terms for the small robot you're looking for. The bot will find the best matches (up to 4) and return links to each of the original tweets.
@@ -16,28 +16,10 @@ The bot is written in Python 3 and the API is written in Go.
 If you want to make a contribution, feel free to submit a pull request.
 
 ## Installing
-First, run the `data_setup.py` file.
-
-You will be prompted to provide the following:
-- Twitter API keys
-  - API key
-  - API secret key
-- Twitter API access tokens
-  - Access token
-  - Access token secret
-- A database URI
-
-If you wish to change any of these later, you can set the Twitter data in `data/.api` the database data in `data/.db`.
-
-Once you have done this, install using the `setup.py` file:
-- `python3 setup.py build`
-- `python3 setup.py install`
+(TODO)
 
 ## Changelog
-[The changelog can be found here](https://github.com/Pantonshire/SmolBotBot/blob/master/changelog.md#changelog). I try to update it whenever I add or change something, but it may sometimes be a bit behind!
+[The changelog can be found here](https://github.com/Pantonshire/SmolBotBot/blob/main/changelog.md#changelog). I try to update it whenever I add or change something, but it may sometimes be a bit behind!
 
 ## Dependencies
-- [Tweepy](https://github.com/tweepy/tweepy)
-- [NLTK](http://www.nltk.org/)
-- [Schedule](https://github.com/dbader/schedule)
-- [SQLAlchemy](https://www.sqlalchemy.org)
+(TODO)
