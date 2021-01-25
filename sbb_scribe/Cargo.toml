@@ -1,0 +1,17 @@
+[package]
+name = "sbb_scribe"
+version = "0.1.1"
+authors = ["Tom Panton <pantonshire@gmail.com>"]
+edition = "2018"
+description = "Tool for parsing and storing Small Robots Tweets en masse"
+
+[dependencies]
+sbb_data = { path = "../sbb_data" }
+sbb_parse = { path = "../sbb_parse", features = ["twitter"] }
+goldcrest = { git = "https://github.com/Pantonshire/goldcrest", branch = "main" }
+tokio = { version = "1.0", features = ["full"] }
+diesel = { version = "1.4", features = ["postgres", "chrono"] }
+dotenv = "0.15"
+chrono = "0.4"
+clap = "3.0.0-beta.2"
+termion = "1.5"

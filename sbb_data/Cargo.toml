@@ -1,0 +1,11 @@
+[package]
+name = "sbb_data"
+version = "0.1.1"
+authors = ["Tom Panton <pantonshire@gmail.com>"]
+edition = "2018"
+description = "Diesel models for Smolbotbot"
+
+[dependencies]
+diesel = { version = "1.4", features = ["postgres", "chrono"] }
+dotenv = "0.15"
+chrono = "0.4"
