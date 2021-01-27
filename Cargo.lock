@@ -484,6 +484,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1255076139a83bb467426e7f8d0134968a8118844faa755985e077cf31850333"
 
 [[package]]
+name = "nlpewee"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "prost",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
 name = "ntapi"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
