@@ -1,6 +1,6 @@
 [package]
 name = "sbb_census"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Tom Panton <pantonshire@gmail.com>"]
 edition = "2018"
 description = "Gather the list of robot Tweet IDs and export it to plaintext"

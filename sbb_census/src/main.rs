@@ -22,6 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tweet_ids: Vec<i64> = robot_groups::table
         .select(robot_groups::tweet_id)
         .distinct()
+        .order(robot_groups::tweet_id.asc())
         .load(&db_conn)?;
 
     let tweet_ids: Vec<u64> = tweet_ids
