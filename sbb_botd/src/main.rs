@@ -38,7 +38,7 @@ struct Opts {
     /// Delete old scheduled dailies
     #[clap(short, long)]
     cleanup: bool,
-    /// Print the selected bot rather than Tweeting it or creating a past_dailies record
+    /// Print the selected bot without Tweeting it or creating a past_dailies record
     #[clap(short, long)]
     dry_run: bool,
 }
