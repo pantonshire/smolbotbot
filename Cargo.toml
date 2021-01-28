@@ -4,5 +4,6 @@ members = [
   "sbb_data",
   "sbb_parse",
   "sbb_scribe",
-  "sbb_botd"
+  "sbb_botd",
+  "sbb_census"
 ]

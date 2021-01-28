@@ -862,6 +862,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sbb_census"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "diesel",
+ "sbb_data",
+]
+
+[[package]]
 name = "sbb_data"
 version = "0.1.1"
 dependencies = [
