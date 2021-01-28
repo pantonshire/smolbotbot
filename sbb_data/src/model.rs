@@ -1,12 +1,12 @@
-use chrono::{NaiveDateTime, NaiveDate};
-
 use crate::schema::*;
+
+use chrono::prelude::*;
 
 #[derive(Identifiable, Queryable, Clone, Debug)]
 pub struct RobotGroup {
     pub id: i64,
     pub tweet_id: i64,
-    pub tweet_time: NaiveDateTime,
+    pub tweet_time: DateTime<Utc>,
     pub image_url: Option<String>,
     pub body: String,
     pub alt: Option<String>,
@@ -117,26 +117,32 @@ pub struct Tag {
 #[table_name="past_dailies"]
 pub struct PastDaily {
     pub id: i64,
-    pub posted_on: NaiveDate,
     pub robot_id: i64,
+    pub posted_on: NaiveDate,
 }
 
 #[derive(Identifiable, Queryable, Clone, Debug)]
 #[table_name="scheduled_dailies"]
 pub struct ScheduledDaily {
     pub id: i64,
-    pub post_on: NaiveDate,
     pub robot_id: i64,
+    pub post_on: NaiveDate,
 }
 
 #[derive(Identifiable, Queryable, Clone, Debug)]
 pub struct ReplyTweet {
     pub id: i64,
     pub request_tweet_id: i64,
-    pub request_tweet_time: NaiveDateTime,
+    pub request_tweet_time: DateTime<Utc>,
     pub reply_tweet_id: i64,
-    pub reply_tweet_time: NaiveDateTime,
+    pub reply_tweet_time: DateTime<Utc>,
     pub user_id: i64,
     pub user_handle: String,
     pub robot_id: i64,
+}
+
+#[derive(Queryable, Clone, Debug)]
+pub struct TaggedMarker {
+    pub robot_group_id: i64,
+    pub tagged_at: DateTime<Utc>,
 }

@@ -1,9 +1,9 @@
-CREATE TABLE robot_groups (
-  id              SERIAL8 PRIMARY KEY,
-  tweet_id        INT8 NOT NULL UNIQUE,
-  tweet_time      TIMESTAMP NOT NULL,
-  image_url       TEXT,
-  body            TEXT NOT NULL,
-  alt             TEXT,
-  content_warning TEXT
+create table robot_groups (
+    id               serial8 primary key,
+    tweet_id         int8 not null unique,
+    tweet_time       timestamp with time zone not null,
+    image_url        text,
+    body             text not null,
+    alt              text,
+    content_warning  text
 );

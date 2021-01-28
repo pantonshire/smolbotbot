@@ -1,1 +1,1 @@
-DROP TABLE scheduled_dailies;
+drop table scheduled_dailies;

@@ -1,1 +1,1 @@
-DROP TABLE robot_groups;
+drop table robot_groups;

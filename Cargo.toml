@@ -5,5 +5,6 @@ members = [
   "sbb_parse",
   "sbb_scribe",
   "sbb_botd",
-  "sbb_census"
+  "sbb_census",
+  "sbb_tagger"
 ]

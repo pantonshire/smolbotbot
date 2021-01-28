@@ -1,10 +1,10 @@
-CREATE TABLE robots (
-  id              SERIAL8 PRIMARY KEY,
-  robot_group_id  INT8 NOT NULL REFERENCES robot_groups (id),
-  robot_number    INT4 NOT NULL,
-  prefix          TEXT NOT NULL,
-  suffix          TEXT NOT NULL,
-  plural          TEXT,
-  ident           TEXT NOT NULL,
-  UNIQUE (robot_number, prefix)
+create table robots (
+    id              serial8 primary key,
+    robot_group_id  int8 not null references robot_groups (id),
+    robot_number    int4 not null,
+    prefix          text not null,
+    suffix          text not null,
+    plural          text,
+    ident           text not null,
+    unique (robot_number, prefix)
 );

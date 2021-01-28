@@ -32,7 +32,7 @@ pub fn parse_tweet<F, T>(tweet: &Tweet, handler: F) -> Option<T> where F: Fn(New
 
     let group = NewRobotGroup{
         tweet_id: tweet.id as i64,
-        tweet_time: tweet.created_at.naive_utc(),
+        tweet_time: tweet.created_at,
         image_url,
         body: body.trim_end(),
         alt,
