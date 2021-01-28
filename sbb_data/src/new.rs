@@ -16,7 +16,7 @@ pub struct NewRobotGroup<'a> {
 #[derive(Insertable, Clone, Debug)]
 #[table_name="robots"]
 pub struct NewRobot<'a> {
-    pub robot_group_id: i32,
+    pub robot_group_id: i64,
     pub robot_number: i32,
     pub prefix: &'a str,
     pub suffix: &'a str,
@@ -27,7 +27,7 @@ pub struct NewRobot<'a> {
 #[derive(Insertable, Clone, Debug)]
 #[table_name="tags"]
 pub struct NewTag<'a> {
-    pub robot_group_id: i32,
+    pub robot_group_id: i64,
     pub tag: &'a str,
 }
 
@@ -35,14 +35,14 @@ pub struct NewTag<'a> {
 #[table_name="past_dailies"]
 pub struct NewPastDaily {
     pub posted_on: NaiveDate,
-    pub robot_id: i32,
+    pub robot_id: i64,
 }
 
 #[derive(Insertable, Clone, Debug)]
 #[table_name="scheduled_dailies"]
 pub struct NewScheduledDaily {
     pub post_on: NaiveDate,
-    pub robot_id: i32,
+    pub robot_id: i64,
 }
 
 #[derive(Insertable, Clone, Debug)]
@@ -54,6 +54,6 @@ pub struct NewReplyTweet<'a> {
     pub reply_tweet_time: NaiveDateTime,
     pub user_id: i64,
     pub user_handle: &'a str,
-    pub robot_id: i32,
+    pub robot_id: i64,
 }
 

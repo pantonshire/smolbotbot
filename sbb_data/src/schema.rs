@@ -1,27 +1,27 @@
 table! {
     past_dailies (id) {
-        id -> Int4,
+        id -> Int8,
         posted_on -> Date,
-        robot_id -> Int4,
+        robot_id -> Int8,
     }
 }
 
 table! {
     reply_tweets (id) {
-        id -> Int4,
+        id -> Int8,
         request_tweet_id -> Int8,
         request_tweet_time -> Timestamp,
         reply_tweet_id -> Int8,
         reply_tweet_time -> Timestamp,
         user_id -> Int8,
         user_handle -> Text,
-        robot_id -> Int4,
+        robot_id -> Int8,
     }
 }
 
 table! {
     robot_groups (id) {
-        id -> Int4,
+        id -> Int8,
         tweet_id -> Int8,
         tweet_time -> Timestamp,
         image_url -> Nullable<Text>,
@@ -33,8 +33,8 @@ table! {
 
 table! {
     robots (id) {
-        id -> Int4,
-        robot_group_id -> Int4,
+        id -> Int8,
+        robot_group_id -> Int8,
         robot_number -> Int4,
         prefix -> Text,
         suffix -> Text,
@@ -45,16 +45,16 @@ table! {
 
 table! {
     scheduled_dailies (id) {
-        id -> Int4,
+        id -> Int8,
         post_on -> Date,
-        robot_id -> Int4,
+        robot_id -> Int8,
     }
 }
 
 table! {
     tags (id) {
-        id -> Int4,
-        robot_group_id -> Int4,
+        id -> Int8,
+        robot_group_id -> Int8,
         tag -> Text,
     }
 }

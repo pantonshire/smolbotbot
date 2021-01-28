@@ -147,14 +147,14 @@ fn select_robot(db_conn: &PgConnection, no_repeat_days: Option<i32>) -> QueryRes
     random_robot(db_conn, no_repeat_days)
 }
 
-fn group_by_id(db_conn: &PgConnection, id: i32) -> QueryResult<RobotGroup> {
+fn group_by_id(db_conn: &PgConnection, id: i64) -> QueryResult<RobotGroup> {
     use schema::*;
     robot_groups::table
         .filter(robot_groups::id.eq(id))
         .first(db_conn)
 }
 
-fn record_past_daily(db_conn: &PgConnection, date: NaiveDate, robot_id: i32) -> QueryResult<()> {
+fn record_past_daily(db_conn: &PgConnection, date: NaiveDate, robot_id: i64) -> QueryResult<()> {
     NewPastDaily{
         posted_on: date,
         robot_id,
@@ -183,7 +183,7 @@ fn random_robot(db_conn: &PgConnection, no_repeat_days: Option<i32>) -> QueryRes
     use diesel::dsl::{now, date, not, IntervalDsl};
     use schema::*;
 
-    let recent_groups: Vec<i32> = match no_repeat_days {
+    let recent_groups: Vec<i64> = match no_repeat_days {
         Some(days) => past_dailies::table
             .inner_join(robots::table)
             .filter(past_dailies::posted_on.ge(date(now - days.days())))

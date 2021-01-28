@@ -849,7 +849,7 @@ dependencies = [
 
 [[package]]
 name = "sbb_botd"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "clap",
@@ -872,7 +872,7 @@ dependencies = [
 
 [[package]]
 name = "sbb_data"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "diesel",
@@ -881,7 +881,7 @@ dependencies = [
 
 [[package]]
 name = "sbb_parse"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "goldcrest",
  "lazy_static",

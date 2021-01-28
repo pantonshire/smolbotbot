@@ -42,7 +42,7 @@ pub fn parse_tweet<F, T>(tweet: &Tweet, handler: F) -> Option<T> where F: Fn(New
     Some(handler(group, robots))
 }
 
-pub fn new_robot<F, T>(robot: &Robot, group_id: i32, handler: F) -> T where F: Fn(NewRobot) -> T {
+pub fn new_robot<F, T>(robot: &Robot, group_id: i64, handler: F) -> T where F: Fn(NewRobot) -> T {
     let identifier = robot.name.identifier();
     handler(NewRobot{
         robot_group_id: group_id,
