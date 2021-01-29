@@ -1,0 +1,19 @@
+goldcrest:
+  scheme: http
+  host: localhost
+  port: 8000
+
+  authentication:
+    default:
+      consumer_key: myconsumerkey
+      consumer_secret: myconsumersecret
+      access_token: myaccesstoken
+      token_secret: mytokensecret
+
+  request_timeout_seconds: 30
+  wait_timeout_seconds: 1000
+
+nlpewee:
+  scheme: http
+  host: localhost
+  port: 8001

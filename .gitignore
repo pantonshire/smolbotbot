@@ -4,6 +4,7 @@
 .vscode
 
 .env
+services.yaml
 
 target/
 experiment/

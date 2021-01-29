@@ -1,5 +1,15 @@
 mod error;
 
+use error::{ScribeError, ScribeResult};
+
+use services::GoldcrestService;
+use sbb_parse::twitter::{parse_tweet, new_robot};
+use sbb_data::Create;
+use diesel::expression::exists::exists;
+use goldcrest::data::Tweet;
+
+use goldcrest::request::{TweetOptions, TimelineOptions};
+
 use std::env;
 use std::sync::Arc;
 use std::collections::HashSet;
@@ -9,33 +19,16 @@ use diesel::{Connection, select, QueryDsl};
 use diesel::result::{Error::DatabaseError, DatabaseErrorKind};
 use clap::{Clap, crate_version, crate_authors, crate_description};
 
-use goldcrest::request::{TweetOptions, TimelineOptions};
-
-use sbb_parse::twitter::{parse_tweet, new_robot};
-use sbb_data::Create;
-use diesel::expression::exists::exists;
-use goldcrest::data::Tweet;
-
-use error::{ScribeError, ScribeResult};
-
 #[derive(Clap)]
 #[clap(version = crate_version!(), author = crate_authors!(), about = crate_description!())]
 struct Opts {
-    /// The scheme to use to connect to the Goldcrest server
-    #[clap(short = 'x', long, default_value = "http")]
-    scheme: String,
-    /// The hostname of the Goldcrest server to connect to
-    #[clap(short, long, default_value = "localhost")]
-    host: String,
-    /// The port of the Goldcrest server to connect to
-    #[clap(short, long, default_value = "8000")]
-    port: u32,
-    /// Time maximum time to wait for a Goldcrest request in seconds
-    #[clap(short, long, default_value = "30")]
-    request_timeout: i64,
-    /// Time maximum time to wait for Goldcrest resource availability in seconds
-    #[clap(short, long, default_value = "1000")]
-    wait_timeout: i64,
+    /// The path to the services YAML. If omitted, "services.yaml" will be used.
+    #[clap(long)]
+    services: Option<String>,
+    /// The services YAML key corresponding to the Goldcrest Twitter authentication data to use.
+    /// If omitted, the key "default" will be used.
+    #[clap(long)]
+    goldcrest_auth: Option<String>,
     /// Limit output from the command
     #[clap(short, long, parse(from_occurrences))]
     silent: u8,
@@ -82,31 +75,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let show_summary = opts.silent < 2;
     let show_progress = opts.silent < 1;
 
-    let db_conn = sbb_data::connect_env()?;
+    let sc = services::load(opts.services.as_deref())?;
 
-    dotenv::dotenv().ok();
+    let mut sc_goldcrest = sc.goldcrest
+        .expect("No Goldcrest config found");
 
-    let consumer_key = env::var("TWITTER_CONSUMER_KEY")
-        .expect("TWITTER_CONSUMER_KEY not set");
-    let consumer_secret = env::var("TWITTER_CONSUMER_SECRET")
-        .expect("TWITTER_CONSUMER_SECRET not set");
-    let access_token = env::var("TWITTER_ACCESS_TOKEN")
-        .expect("TWITTER_ACCESS_TOKEN not set");
-    let token_secret = env::var("TWITTER_TOKEN_SECRET")
-        .expect("TWITTER_TOKEN_SECRET not set");
+    let auth_key = opts
+        .goldcrest_auth
+        .as_deref()
+        .unwrap_or(GoldcrestService::DEFAULT_AUTH_KEY);
 
-    let auth = goldcrest::Authentication::new(consumer_key, consumer_secret, access_token, token_secret);
+    let auth = sc_goldcrest.authentication.remove(auth_key)
+        .expect("Authentication data not found");
+
+    let auth = goldcrest::Authentication::new(
+        auth.consumer_key,
+        auth.consumer_secret,
+        auth.access_token,
+        auth.token_secret
+    );
 
     let mut client = goldcrest::ClientBuilder::new();
     client
         .authenticate(auth)
-        .scheme(&opts.scheme)
-        .host(&opts.host)
-        .port(opts.port)
-        .request_timeout(Duration::seconds(opts.request_timeout))
-        .wait_timeout(Duration::seconds(opts.wait_timeout));
+        .scheme(&sc_goldcrest.scheme)
+        .socket(&sc_goldcrest.host, sc_goldcrest.port);
+    if let Some(timeout) = sc_goldcrest.request_timeout_seconds {
+        client.request_timeout(Duration::seconds(timeout));
+    }
+    if let Some(timeout) = sc_goldcrest.wait_timeout_seconds {
+        client.wait_timeout(Duration::seconds(timeout));
+    }
 
     let client = Arc::new(client.connect().await?);
+
+    let db_conn = sbb_data::connect_env()?;
 
     let (parsed, unparsed, existing, not_found) = match opts.subcommand {
         Subcommand::File(file_opts) => {

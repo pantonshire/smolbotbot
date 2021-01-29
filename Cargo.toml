@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "nlpewee",
+  "services",
   "sbb_data",
   "sbb_parse",
   "sbb_scribe",
