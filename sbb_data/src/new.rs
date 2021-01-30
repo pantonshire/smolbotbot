@@ -61,5 +61,4 @@ pub struct NewReplyTweet<'a> {
 #[table_name="tagged_markers"]
 pub struct NewTaggedMarker {
     pub robot_group_id: i64,
-    pub tagged_at: DateTime<Utc>,
 }

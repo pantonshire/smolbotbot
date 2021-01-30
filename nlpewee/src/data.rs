@@ -34,6 +34,18 @@ impl Token {
     pub fn is_stopword(&self) -> bool {
         self.full.cleaned.is_none()
     }
+
+    pub fn is_at_mention(&self) -> bool {
+        self.full.raw.starts_with("@")
+    }
+
+    pub fn is_hashtag(&self) -> bool {
+        self.full.raw.starts_with("#")
+    }
+
+    pub fn is_apostrophe(&self) -> bool {
+        self.full.raw.starts_with("'")
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -132,4 +144,37 @@ pub enum Tag {
     /// Wh-adverb
     WRB,
     Other(String),
+}
+
+impl Tag {
+    pub fn is_noun(&self) -> bool {
+        match self {
+            Tag::NN   => true,
+            Tag::NNP  => true,
+            Tag::NNPS => true,
+            Tag::NNS  => true,
+            _         => false,
+        }
+    }
+
+    pub fn is_verb(&self) -> bool {
+        match self {
+            Tag::VB  => true,
+            Tag::VBD => true,
+            Tag::VBG => true,
+            Tag::VBN => true,
+            Tag::VBP => true,
+            Tag::VBZ => true,
+            _        => false,
+        }
+    }
+
+    pub fn is_adjective(&self) -> bool {
+        match self {
+            Tag::JJ  => true,
+            Tag::JJR => true,
+            Tag::JJS => true,
+            _        => false,
+        }
+    }
 }

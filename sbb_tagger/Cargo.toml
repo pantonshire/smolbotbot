@@ -3,7 +3,14 @@ name = "sbb_tagger"
 version = "0.1.0"
 authors = ["Tom Panton <pantonshire@gmail.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Search tag generator for Small Robots that have already been parsed and stored"
 
 [dependencies]
+services = { path = "../services" }
+sbb_data = { path = "../sbb_data" }
+nlpewee = { path = "../nlpewee" }
+tokio = { version = "1.0", features = ["full"] }
+diesel = { version = "1.4", features = ["postgres", "chrono"] }
+lazy_static = "1.4"
+regex = "1"
+clap = "3.0.0-beta.2"
