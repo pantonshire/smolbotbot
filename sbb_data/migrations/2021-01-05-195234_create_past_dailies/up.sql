@@ -1,5 +1,5 @@
-CREATE TABLE past_dailies (
-  id        SERIAL PRIMARY KEY,
-  posted_on DATE NOT NULL,
-  robot_id  INTEGER NOT NULL REFERENCES robots (id)
+create table past_dailies (
+    id         serial8 primary key,
+    robot_id   int8 not null references robots (id),
+    posted_on  date not null
 );

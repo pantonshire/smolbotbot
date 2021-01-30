@@ -1,16 +1,16 @@
 [package]
-name = "sbb_botd"
-version = "0.2.0"
+name = "sbb_tagger"
+version = "0.1.0"
 authors = ["Tom Panton <pantonshire@gmail.com>"]
 edition = "2018"
-description = "Tweet the Small Robot of the day"
+description = "Search tag generator for Small Robots that have already been parsed and stored"
 
 [dependencies]
 services = { path = "../services" }
 sbb_data = { path = "../sbb_data" }
-goldcrest = { git = "https://github.com/Pantonshire/goldcrest", branch = "main" }
+nlpewee = { path = "../nlpewee" }
 tokio = { version = "1.0", features = ["full"] }
 diesel = { version = "1.4", features = ["postgres", "chrono"] }
-chrono = "0.4"
+lazy_static = "1.4"
+regex = "1"
 clap = "3.0.0-beta.2"
-fastrand = "1.4"

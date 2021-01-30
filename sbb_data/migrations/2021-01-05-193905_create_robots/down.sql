@@ -1,1 +1,1 @@
-DROP TABLE robots;
+drop table robots;

@@ -1,1 +1,1 @@
-DROP TABLE reply_tweets;
+drop table reply_tweets;

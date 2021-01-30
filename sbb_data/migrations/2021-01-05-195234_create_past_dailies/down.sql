@@ -1,1 +1,1 @@
-DROP TABLE past_dailies;
+drop table past_dailies;

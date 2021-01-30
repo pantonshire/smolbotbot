@@ -1,6 +1,6 @@
-use diesel::prelude::*;
-
 use crate::{schema::*, model::*, new::*};
+
+use diesel::prelude::*;
 
 pub trait Create<T> {
     fn create(&self, conn: &PgConnection) -> QueryResult<T>;
@@ -47,5 +47,11 @@ impl Create<ScheduledDaily> for NewScheduledDaily {
 impl Create<ReplyTweet> for NewReplyTweet<'_> {
     fn create(&self, conn: &PgConnection) -> QueryResult<ReplyTweet> {
         insert!(conn, reply_tweets, self)
+    }
+}
+
+impl Create<TaggedMarker> for NewTaggedMarker {
+    fn create(&self, conn: &PgConnection) -> QueryResult<TaggedMarker> {
+        insert!(conn, tagged_markers, self)
     }
 }
