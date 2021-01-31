@@ -81,8 +81,6 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
             let (group_id, tags) = join_handle.await??;
             create_tags(&db_conn, group_id, &tags)?;
         }
-
-        println!("{} tagged", num_tagged);
     }
 
     Ok(())
