@@ -1,6 +1,6 @@
 [package]
 name = "sbb_tagger"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Tom Panton <pantonshire@gmail.com>"]
 edition = "2018"
 description = "Search tag generator for Small Robots that have already been parsed and stored"
