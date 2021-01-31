@@ -16,11 +16,11 @@ struct Opts {
     /// The path to the services YAML. If omitted, "services.yaml" will be used.
     #[clap(long)]
     services: Option<String>,
-    /// The maximum number of robots to tag. If omitted, tag all of the robots in the database.
+    /// The maximum number of robots to tag.
     #[clap(short, long)]
-    limit: Option<usize>,
+    limit: usize,
     /// The maximum number of concurrent requests to the NLPewee server.
-    #[clap(short, long, default_value = "255")]
+    #[clap(short, long, default_value = "5")]
     batch_size: usize,
 }
 
@@ -51,21 +51,10 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     let mut num_tagged = 0;
     let mut tagged_ids = Vec::<i64>::new();
 
-    loop {
-        if let Some(limit) = opts.limit {
-            if num_tagged >= limit {
-                break;
-            }
-        }
-
-        let batch_size = if let Some(limit) = opts.limit {
-            opts.batch_size.min(limit - num_tagged)
-        } else {
-            opts.batch_size
-        };
+    while num_tagged < opts.limit {
+        let batch_size = opts.batch_size.min(opts.limit - num_tagged);
 
         let batch = select_batch(&db_conn, batch_size, &tagged_ids)?;
-
         if batch.is_empty() {
             break;
         }
