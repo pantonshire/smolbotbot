@@ -3,6 +3,7 @@ name = "sbb_data"
 version = "0.2.0"
 authors = ["Tom Panton <pantonshire@gmail.com>"]
 edition = "2018"
+license = "MIT"
 description = "Diesel models for Smolbotbot"
 
 [dependencies]

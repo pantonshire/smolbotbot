@@ -3,6 +3,7 @@ name = "sbb_tagger"
 version = "0.2.0"
 authors = ["Tom Panton <pantonshire@gmail.com>"]
 edition = "2018"
+license = "MIT"
 description = "Search tag generator for Small Robots that have already been parsed and stored"
 
 [dependencies]
