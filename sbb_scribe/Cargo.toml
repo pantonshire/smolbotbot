@@ -3,6 +3,7 @@ name = "sbb_scribe"
 version = "0.2.0"
 authors = ["Tom Panton <pantonshire@gmail.com>"]
 edition = "2018"
+license = "MIT"
 description = "Tool for parsing and storing Small Robots Tweets en masse"
 
 [dependencies]

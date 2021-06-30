@@ -3,6 +3,7 @@ name = "sbb_parse"
 version = "0.2.0"
 authors = ["Tom Panton <pantonshire@gmail.com>"]
 edition = "2018"
+license = "MIT"
 description = "Small Robots Tweet parser for Smolbotbot"
 
 [features]
