@@ -1,6 +1,6 @@
 create table robots (
     id              serial8 primary key,
-    robot_group_id  int8 not null references robot_groups (id),
+    robot_group_id  int8 not null references robot_groups (id) on delete cascade,
     robot_number    int4 not null,
     prefix          text not null,
     suffix          text not null,
