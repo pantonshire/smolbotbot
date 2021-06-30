@@ -7,7 +7,7 @@ use chrono::prelude::*;
 pub struct NewRobotGroup<'a> {
     pub tweet_id: i64, //Cast u64 to i64 to obtain this, then cast back to u64 when retrieving the group
     pub tweet_time: DateTime<Utc>,
-    pub image_url: Option<&'a str>,
+    pub image_url: &'a str,
     pub body: &'a str,
     pub alt: Option<&'a str>,
     pub content_warning: Option<&'a str>,

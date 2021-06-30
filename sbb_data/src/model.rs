@@ -7,7 +7,7 @@ pub struct RobotGroup {
     pub id: i64,
     pub tweet_id: i64,
     pub tweet_time: DateTime<Utc>,
-    pub image_url: Option<String>,
+    pub image_url: String,
     pub body: String,
     pub alt: Option<String>,
     pub content_warning: Option<String>,

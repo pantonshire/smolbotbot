@@ -17,18 +17,18 @@ pub fn parse_tweet<F, T>(tweet: &Tweet, handler: F) -> Option<T> where F: Fn(New
         .filter(|&media| {
             media.media_type == "photo" || media.media_type == "animated_gif" || media.media_type == "video"
         })
-        .next();
+        .next()?;
 
-    let image_url = image.map(|image| image.media_url.as_str());
+    let image_url = image.media_url.as_str();
 
-    let alt = image.and_then(|image| {
+    let alt = {
         let alt = image.alt.trim();
         if alt.is_empty() {
             None
         } else {
             Some(alt)
         }
-    });
+    };
 
     let group = NewRobotGroup{
         tweet_id: tweet.id as i64,
