@@ -1,11 +1,9 @@
 [workspace]
 members = [
-  "nlpewee",
   "services",
   "sbb_data",
   "sbb_parse",
   "sbb_scribe",
   "sbb_botd",
-  "sbb_census",
-  "sbb_tagger"
+  "sbb_census"
 ]
