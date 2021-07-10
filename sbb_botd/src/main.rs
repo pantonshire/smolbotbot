@@ -1,6 +1,7 @@
 use goldcrest::{TweetOptions, TweetBuilder};
 
 use std::env;
+use const_format::concatcp;
 use chrono::{Utc, NaiveDate, Duration};
 use clap::{Clap, crate_version, crate_authors, crate_description};
 use sqlx::{Connection, postgres::PgConnection, FromRow};
@@ -195,37 +196,39 @@ async fn record_past_daily(db_conn: &mut PgConnection, date: NaiveDate, robot_id
     Ok(())
 }
 
+const SQL_SELECT_DAILY_ROBOT: &str =
+    "SELECT \
+        robots.id, robots.robot_number, robots.prefix, robots.suffix, robots.plural, \
+        robot_groups.tweet_id, robot_groups.content_warning \
+    FROM robots INNER JOIN robot_groups ON robots.group_id = robot_groups.id";
+
 async fn scheduled_robot(db_conn: &mut PgConnection) -> sqlx::Result<Option<DailyRobot>> {
-    sqlx::query_as::<_, DailyRobot>(
-        "SELECT \
-            robots.id, robots.robot_number, robots.prefix, robots.suffix, robots.plural, \
-            robot_groups.tweet_id, robot_groups.content_warning \
-        FROM robots INNER JOIN robot_groups ON robots.group_id = robot_groups.id \
-        WHERE EXISTS ( \
+    sqlx::query_as::<_, DailyRobot>(concatcp!(
+        SQL_SELECT_DAILY_ROBOT,
+        " ",
+        "WHERE EXISTS (\
             SELECT 1 FROM scheduled_dailies \
             WHERE \
                 robots.id = scheduled_dailies.robot_id \
                 AND scheduled_dailies.post_on = date(now())) \
         LIMIT 1"
-    )
+    ))
     .fetch_optional(db_conn)
     .await
 }
 
 async fn random_robot(db_conn: &mut PgConnection, no_repeat_days: i32) -> sqlx::Result<DailyRobot> {
-    sqlx::query_as::<_, DailyRobot>(
-        "SELECT \
-            robots.id, robots.robot_number, robots.prefix, robots.suffix, robots.plural, \
-            robot_groups.tweet_id, robot_groups.content_warning \
-        FROM robots INNER JOIN robot_groups ON robots.group_id = robot_groups.id \
-        WHERE NOT EXISTS ( \
+    sqlx::query_as::<_, DailyRobot>(concatcp!(
+        SQL_SELECT_DAILY_ROBOT,
+        " ",
+        "WHERE NOT EXISTS (\
             SELECT 1 FROM past_dailies \
             WHERE \
                 past_dailies.robot_id = robots.id \
                 AND past_dailies.posted_on >= (date(now()) - $1)) \
         ORDER BY RANDOM() \
         LIMIT 1"
-    )
+    ))
     .bind(no_repeat_days)
     .fetch_one(db_conn)
     .await
