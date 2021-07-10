@@ -2,6 +2,8 @@ use std::ops::Range;
 use lazy_static::lazy_static;
 use regex::Regex;
 
+/// Output of parsing. The string slice is the remainder of the string to be parsed, T is whatever
+/// value parsing produced.
 type ParseOut<'a, T> = Option<(&'a str, T)>;
 
 #[derive(PartialEq, Eq, Clone, Debug)]

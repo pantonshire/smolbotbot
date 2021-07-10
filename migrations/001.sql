@@ -1,36 +1,46 @@
-create table robot_groups (
-    id               serial4 primary key,
-    tweet_id         int8 not null unique,
-    tweet_time       timestamp with time zone not null,
-    image_url        text not null,
-    body             text not null,
-    alt              text,
-    content_warning  text,
-    tags             text array
+CREATE TABLE robot_groups (
+    id               SERIAL4 PRIMARY KEY,
+    tweet_id         INT8 NOT NULL UNIQUE,
+    tweet_time       TIMESTAMP WITH TIME ZONE NOT NULL,
+    image_url        TEXT NOT NULL,
+    body             TEXT NOT NULL,
+    alt              TEXT,
+    content_warning  TEXT,
+    tags             TEXT ARRAY
 );
 
-create index ix_robot_groups_tags on robot_groups using gin (tags);
+CREATE INDEX ix_robot_groups_tags ON robot_groups USING gin (tags);
 
-create table robots (
-    id              serial4 primary key,
-    robot_group_id  int4 not null references robot_groups (id) on delete cascade,
-    robot_number    int4 not null,
-    prefix          text not null,
-    suffix          text not null,
-    plural          text,
-    ident           text not null,
+CREATE TABLE robots (
+    id            SERIAL4 PRIMARY KEY,
+    group_id      INT4 NOT NULL REFERENCES robot_groups (id) ON DELETE CASCADE,
+    robot_number  INT4 NOT NULL,
+    prefix        TEXT NOT NULL,
+    suffix        TEXT NOT NULL,
+    plural        TEXT,
+    ident         TEXT NOT NULL,
     
-    unique (robot_number, prefix)
+    UNIQUE (robot_number, prefix)
 );
 
-create table past_dailies (
-    id         serial4 primary key,
-    robot_id   int4 not null references robots (id) on delete cascade,
-    posted_on  date not null
+CREATE TABLE missing_alt (
+    group_id  INT4 PRIMARY KEY REFERENCES robot_groups (id) ON DELETE CASCADE,
+    alt       TEXT NOT NULL
 );
 
-create table scheduled_dailies (
-    id        serial4 primary key,
-    robot_id  int4 not null references robots (id) on delete cascade,
-    post_on   date not null unique
+CREATE TABLE past_dailies (
+    id         SERIAL4 PRIMARY KEY,
+    robot_id   INT4 NOT NULL REFERENCES robots (id) ON DELETE CASCADE,
+    posted_on  DATE NOT NULL
 );
+
+CREATE INDEX ix_past_dailies_robot_id ON past_dailies USING hash (robot_id);
+CREATE INDEX ix_past_dailies_posted_on ON past_dailies USING btree (posted_on);
+
+CREATE TABLE scheduled_dailies (
+    id        SERIAL4 PRIMARY KEY,
+    robot_id  INT4 NOT NULL REFERENCES robots (id) ON DELETE CASCADE,
+    post_on   DATE NOT NULL UNIQUE
+);
+
+CREATE INDEX ix_scheduled_dailies_post_on ON scheduled_dailies USING btree (post_on);

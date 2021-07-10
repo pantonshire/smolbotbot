@@ -4,7 +4,7 @@ use std::fmt::{self, Display, Formatter};
 #[derive(Debug)]
 pub(super) enum BotdError {
     GoldcrestError(Box<goldcrest::error::RequestError>),
-    DbError(Box<diesel::result::Error>),
+    DbError(Box<sqlx::Error>),
 }
 
 impl Display for BotdError {
@@ -24,8 +24,8 @@ impl From<goldcrest::error::RequestError> for BotdError {
     }
 }
 
-impl From<diesel::result::Error> for BotdError {
-    fn from(err: diesel::result::Error) -> Self {
+impl From<sqlx::Error> for BotdError {
+    fn from(err: sqlx::Error) -> Self {
         BotdError::DbError(Box::new(err))
     }
 }

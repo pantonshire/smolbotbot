@@ -1,17 +1,16 @@
 [package]
 name = "sbb_parse"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Tom Panton <pantonshire@gmail.com>"]
 edition = "2018"
 license = "MIT"
 description = "Small Robots Tweet parser for Smolbotbot"
 
 [features]
-twitter = ["goldcrest", "sbb_data"]
+twitter = ["goldcrest"]
 
 [dependencies]
-sbb_data = { path = "../sbb_data", optional = true }
 goldcrest = { git = "https://github.com/Pantonshire/goldcrest", branch = "main", optional = true }
-lazy_static = "1.4"
+lazy_static = "1"
 regex = "1"
 unidecode = "0.3"

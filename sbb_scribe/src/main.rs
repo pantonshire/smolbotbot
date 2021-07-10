@@ -70,6 +70,10 @@ struct TimelineCommand {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(feature = "dotenv")] {
+        dotenv::dotenv().ok();
+    }
+
     let opts = Opts::parse();
 
     let show_summary = opts.silent < 2;

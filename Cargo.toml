@@ -1,7 +1,6 @@
 [workspace]
 members = [
   "services",
-  "sbb_data",
   "sbb_parse",
   "sbb_scribe",
   "sbb_botd",
