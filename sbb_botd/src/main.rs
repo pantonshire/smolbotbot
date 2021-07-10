@@ -1,5 +1,3 @@
-// mod error;
-
 use goldcrest::{TweetOptions, TweetBuilder};
 
 use std::env;
@@ -8,8 +6,6 @@ use clap::{Clap, crate_version, crate_authors, crate_description};
 use sqlx::{Connection, postgres::PgConnection, FromRow};
 
 use services::GoldcrestService;
-
-// use error::BotdError;
 
 #[derive(Clap)]
 #[clap(version = crate_version!(), author = crate_authors!(), about = crate_description!())]
