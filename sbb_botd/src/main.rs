@@ -1,7 +1,7 @@
 use goldcrest::{TweetOptions, TweetBuilder};
 
 use std::env;
-use const_format::concatcp;
+use lazy_static::lazy_static;
 use chrono::{Utc, NaiveDate, Duration};
 use clap::{Clap, crate_version, crate_authors, crate_description};
 use sqlx::{Connection, postgres::PgConnection, FromRow};
@@ -20,7 +20,7 @@ struct Opts {
     goldcrest_auth: Option<String>,
     /// The number of days before a robot group can be selected again after being selected
     #[clap(short, long, default_value = "14")]
-    no_repeat_days: i32,
+    no_repeat_days: i64,
     /// Delete old scheduled dailies
     #[clap(short, long)]
     cleanup: bool,
@@ -61,6 +61,10 @@ impl DailyRobot {
     fn tweet_url(&self) -> String {
         format!("https://twitter.com/smolrobots/status/{}", self.tweet_id)
     }
+}
+
+lazy_static! {
+    static ref TODAY_UTC: NaiveDate = Utc::now().date().naive_utc();
 }
 
 #[tokio::main]
@@ -171,13 +175,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn lines(contents: &str) -> Vec<&str> {
     contents
-        .split("\n")
-        .map(str::trim)
-        .filter(|l| !l.is_empty())
+        .lines()
+        .filter_map(|line| match line.trim() {
+            s if s.is_empty() => None,
+            s => Some(s),
+        })
         .collect()
 }
 
-async fn select_robot(db_conn: &mut PgConnection, no_repeat_days: i32) -> sqlx::Result<DailyRobot> {
+async fn select_robot(db_conn: &mut PgConnection, no_repeat_days: i64) -> sqlx::Result<DailyRobot> {
     match scheduled_robot(db_conn).await? {
         Some(scheduled) => Ok(scheduled),
         None => random_robot(db_conn, no_repeat_days).await,
@@ -185,58 +191,61 @@ async fn select_robot(db_conn: &mut PgConnection, no_repeat_days: i32) -> sqlx::
 }
 
 async fn record_past_daily(db_conn: &mut PgConnection, date: NaiveDate, robot_id: i32) -> sqlx::Result<()> {
-    sqlx::query(
-        "INSERT INTO past_dailies (posted_on, robot_id) VALUES ($1, $2)"
+    sqlx::query!(
+        "INSERT INTO past_dailies (posted_on, robot_id) VALUES ($1, $2)",
+        date,
+        robot_id,
     )
-    .bind(date)
-    .bind(robot_id)
     .execute(db_conn)
-    .await?;
-
-    Ok(())
+    .await
+    .map(|_| ())
 }
 
-const SQL_SELECT_DAILY_ROBOT: &str =
-    "SELECT \
-        robots.id, robots.robot_number, robots.prefix, robots.suffix, robots.plural, \
-        robot_groups.tweet_id, robot_groups.content_warning \
-    FROM robots INNER JOIN robot_groups ON robots.group_id = robot_groups.id";
-
 async fn scheduled_robot(db_conn: &mut PgConnection) -> sqlx::Result<Option<DailyRobot>> {
-    sqlx::query_as::<_, DailyRobot>(concatcp!(
-        SQL_SELECT_DAILY_ROBOT,
-        " ",
-        "WHERE EXISTS (\
+    sqlx::query_as!(
+        DailyRobot,
+        "SELECT \
+            robots.id, robots.robot_number, robots.prefix, robots.suffix, robots.plural, \
+            robot_groups.tweet_id, robot_groups.content_warning \
+        FROM robots INNER JOIN robot_groups ON robots.group_id = robot_groups.id \
+        WHERE EXISTS (\
             SELECT 1 FROM scheduled_dailies \
             WHERE \
                 robots.id = scheduled_dailies.robot_id \
-                AND scheduled_dailies.post_on = date(now())) \
-        LIMIT 1"
-    ))
+                AND scheduled_dailies.post_on = $1) \
+        LIMIT 1",
+        *TODAY_UTC
+    )
     .fetch_optional(db_conn)
     .await
 }
 
-async fn random_robot(db_conn: &mut PgConnection, no_repeat_days: i32) -> sqlx::Result<DailyRobot> {
-    sqlx::query_as::<_, DailyRobot>(concatcp!(
-        SQL_SELECT_DAILY_ROBOT,
-        " ",
-        "WHERE NOT EXISTS (\
+async fn random_robot(db_conn: &mut PgConnection, no_repeat_days: i64) -> sqlx::Result<DailyRobot> {
+    let reuse_cutoff_date = *TODAY_UTC - Duration::days(no_repeat_days);
+
+    sqlx::query_as!(
+        DailyRobot,
+        "SELECT \
+            robots.id, robots.robot_number, robots.prefix, robots.suffix, robots.plural, \
+            robot_groups.tweet_id, robot_groups.content_warning \
+        FROM robots INNER JOIN robot_groups ON robots.group_id = robot_groups.id \
+        WHERE NOT EXISTS (\
             SELECT 1 FROM past_dailies \
             WHERE \
                 past_dailies.robot_id = robots.id \
-                AND past_dailies.posted_on >= (date(now()) - $1)) \
-        ORDER BY RANDOM() \
-        LIMIT 1"
-    ))
-    .bind(no_repeat_days)
+                AND past_dailies.posted_on >= $1) \
+        ORDER BY random() \
+        LIMIT 1",
+        reuse_cutoff_date
+    )
     .fetch_one(db_conn)
     .await
 }
 
 async fn cleanup_old_scheduled(db_conn: &mut PgConnection) -> sqlx::Result<u64> {
-    sqlx::query(
-        "DELETE FROM scheduled_dailies WHERE post_on < date(now())"
+    sqlx::query!(
+        "DELETE FROM scheduled_dailies WHERE post_on < $1",
+        *TODAY_UTC
     )
     .execute(db_conn)
     .await
