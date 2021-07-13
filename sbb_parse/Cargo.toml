@@ -6,11 +6,8 @@ edition = "2018"
 license = "MIT"
 description = "Small Robots Tweet parser for Smolbotbot"
 
-[features]
-twitter = ["goldcrest"]
-
 [dependencies]
-goldcrest = { git = "https://github.com/Pantonshire/goldcrest", branch = "main", optional = true }
 lazy_static = "1"
 regex = "1"
 unidecode = "0.3"
+chrono = "0.4"

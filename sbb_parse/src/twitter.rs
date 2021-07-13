@@ -1,23 +1,41 @@
+use std::borrow::Cow;
+
+use chrono::{Utc, DateTime};
+
 use goldcrest::data::{Tweet, tweet::TweetTextOptions};
-use sbb_data::new::{NewRobotGroup, NewRobot};
 
-use crate::parse::*;
+use crate::parse;
+use crate::robot::Robot;
 
-pub fn parse_tweet<F, T>(tweet: &Tweet, handler: F) -> Option<T> where F: Fn(NewRobotGroup, Vec<Robot>) -> T {
+#[derive(Debug)]
+pub struct RobotsTweet<'a> {
+    tweet_id: i64,
+    tweet_time: DateTime<Utc>,
+    image_url: Cow<'a, str>,
+    body: Cow<'a, str>,
+    alt: Option<Cow<'a, str>>,
+    content_warning: Option<Cow<'a, str>>,
+    robots: Vec<Robot<'a>>,
+}
+
+pub fn parse_tweet<F, T>(tweet: &Tweet, handler: F) -> Option<T>
+where
+    F: Fn(RobotsTweet) -> T,
+{
     let text_opts = TweetTextOptions::all()
         .media(false)
         .urls(false);
 
     let text = tweet.text(text_opts);
 
-    let (robots, body, cw) = parse_group(&text)?;
+    let (robots, body, cw) = parse::parse_group(&text)?;
+    let body = body.trim_end();
 
     let image = tweet.media
         .iter()
-        .filter(|&media| {
+        .find(|media| {
             media.media_type == "photo" || media.media_type == "animated_gif" || media.media_type == "video"
-        })
-        .next()?;
+        })?;
 
     let image_url = image.media_url.as_str();
 
@@ -29,27 +47,14 @@ pub fn parse_tweet<F, T>(tweet: &Tweet, handler: F) -> Option<T> where F: Fn(New
             Some(alt)
         }
     };
-
-    let group = NewRobotGroup{
+    
+    Some(handler(RobotsTweet{
         tweet_id: tweet.id as i64,
         tweet_time: tweet.created_at,
-        image_url,
-        body: body.trim_end(),
-        alt,
-        content_warning: cw,
-    };
-    
-    Some(handler(group, robots))
-}
-
-pub fn new_robot<F, T>(robot: &Robot, group_id: i64, handler: F) -> T where F: Fn(NewRobot) -> T {
-    let identifier = robot.name.identifier();
-    handler(NewRobot{
-        robot_group_id: group_id,
-        robot_number: robot.number,
-        prefix: robot.name.prefix,
-        suffix: robot.name.suffix,
-        plural: robot.name.plural,
-        ident: &identifier,
-    })
+        image_url: Cow::Borrowed(image_url),
+        body: Cow::Borrowed(body),
+        alt: alt.map(Cow::Borrowed),
+        content_warning: cw.map(Cow::Borrowed),
+        robots
+    }))
 }

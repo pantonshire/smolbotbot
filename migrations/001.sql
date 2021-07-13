@@ -20,7 +20,7 @@ CREATE TABLE robots (
     plural        TEXT,
     ident         TEXT NOT NULL,
     
-    UNIQUE (robot_number, prefix)
+    UNIQUE (robot_number, ident)
 );
 
 CREATE TABLE missing_alt (

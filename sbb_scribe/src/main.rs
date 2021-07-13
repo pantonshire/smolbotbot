@@ -1,58 +1,53 @@
 mod error;
 
-use error::{ScribeError, ScribeResult};
-
-use services::GoldcrestService;
-use sbb_parse::twitter::{parse_tweet, new_robot};
-use sbb_data::Create;
-use diesel::expression::exists::exists;
-use goldcrest::data::Tweet;
-
-use goldcrest::request::{TweetOptions, TimelineOptions};
-
 use std::env;
 use std::sync::Arc;
-use std::collections::HashSet;
-use chrono::{prelude::*, Duration};
-use diesel::prelude::*;
-use diesel::{Connection, select, QueryDsl};
-use diesel::result::{Error::DatabaseError, DatabaseErrorKind};
+use std::borrow::Cow;
+use std::io::{self, Read};
+
+use anyhow::anyhow;
+use chrono::Duration;
 use clap::{Clap, crate_version, crate_authors, crate_description};
+use sqlx::Connection;
+use sqlx::postgres::{PgConnection, PgPool};
+
+use goldcrest::data::{Tweet, tweet::TweetTextOptions, Media};
+use goldcrest::request::{TweetOptions, TimelineOptions};
+
+use services::GoldcrestService;
+
+use error::{NotScribed, InvalidTweet, ScribeFailure, ReadIdsError};
 
 #[derive(Clap)]
 #[clap(version = crate_version!(), author = crate_authors!(), about = crate_description!())]
 struct Opts {
-    /// The path to the services YAML. If omitted, "services.yaml" will be used.
+    /// The path to the services YAML. If omitted, "services.yaml" will be used
     #[clap(long)]
     services: Option<String>,
     /// The services YAML key corresponding to the Goldcrest Twitter authentication data to use.
-    /// If omitted, the key "default" will be used.
+    /// If omitted, the key "default" will be used
     #[clap(long)]
     goldcrest_auth: Option<String>,
-    /// Limit output from the command
-    #[clap(short, long, parse(from_occurrences))]
-    silent: u8,
-    /// Display new robot Tweet ids when done
-    #[clap(long)]
-    show_new: bool,
+    /// Show additional information while running
+    #[clap(short, long)]
+    verbose: bool,
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
 
 #[derive(Clap)]
 enum Subcommand {
-    File(FileCommand),
+    /// Read tweet ids from stdin
+    Ids(IdsCommand),
+    /// Traverse a user's timeline
     Timeline(TimelineCommand),
 }
 
 #[derive(Clap)]
-struct FileCommand {
-    /// The file from which to read the Tweet ids
-    #[clap(short, long)]
-    file: String,
-    /// The maximum number of Tweets to retrieve before writing to the database
-    #[clap(short, long)]
-    batch_size: Option<usize>,
+struct IdsCommand {
+    /// The maximum number of Tweets that can be requested concurrently
+    #[clap(short, long, default_value = "400")]
+    batch_size: usize,
 }
 
 #[derive(Clap)]
@@ -68,16 +63,15 @@ struct TimelineCommand {
     pages: usize,
 }
 
+const DB_URL_VAR: &str = "DATABASE_URL";
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     #[cfg(feature = "dotenv")] {
         dotenv::dotenv().ok();
     }
 
     let opts = Opts::parse();
-
-    let show_summary = opts.silent < 2;
-    let show_progress = opts.silent < 1;
 
     let sc = services::load(opts.services.as_deref())?;
 
@@ -113,107 +107,107 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Arc::new(client.connect().await?);
 
-    let db_conn = sbb_data::connect_env()?;
+    let group_ids = match opts.subcommand {
+        Subcommand::Ids(ids_opts) => {
+            if ids_opts.batch_size < 1 {
+                return Err(anyhow!("batch size must be at least 1"));
+            }
 
-    let (parsed, unparsed, existing, not_found) = match opts.subcommand {
-        Subcommand::File(file_opts) => {
-            use std::fs;
-
-            let contents = fs::read_to_string(file_opts.file)
-                .expect("Error reading file");
-
-            let tweet_ids = contents
-                .split_whitespace()
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(|s| s.parse::<u64>().expect("Error parsing file"))
-                .collect::<Vec<u64>>();
+            // We will be accessing the database concurrently, so make a pool rather than just a
+            // single connection
+            let db_pool = {
+                let db_url = env::var(DB_URL_VAR)?;
+                PgPool::connect(&db_url).await?
+            };
             
-            let (parsed, unparsed, existing) = match file_opts.batch_size {
-                None => scribe_ids(client, &db_conn, &tweet_ids, show_progress).await,
-                Some(batch_size) => scribe_ids_batched(client, &db_conn, &tweet_ids, batch_size, show_progress).await
-            }?;
+            let group_ids = {
+                let tweet_ids = read_tweet_ids()?;
+                scribe_ids_batched(client, &db_pool, &tweet_ids, ids_opts.batch_size, opts.verbose)
+                    .await?
+            };
 
-            let mut found = HashSet::<u64>::new();
-            found.extend(parsed.iter());
-            found.extend(unparsed.iter());
-            found.extend(existing.iter());
+            // Manually close all of the pool's connections so that Postgres has an easier time
+            // cleaning them up
+            db_pool.close().await;
 
-            let not_found = tweet_ids
-                .iter()
-                .copied()
-                .filter(|id| !found.contains(id))
-                .collect::<Vec<u64>>();
-
-            (parsed, unparsed, existing, Some(not_found))
+            group_ids
         },
 
         Subcommand::Timeline(timeline_opts) => {
+            // All database access will be in series, so we can use a single connection
+            let mut db_conn = {
+                let db_url = env::var(DB_URL_VAR)?;
+                PgConnection::connect(&db_url).await?
+            };
+
             let handle = timeline_opts.user
                 .strip_prefix("@")
                 .map(str::to_owned)
                 .unwrap_or(timeline_opts.user);
             let user = goldcrest::UserIdentifier::Handle(handle);
 
-            let (parsed, unparsed, existing) = scribe_timeline(&client, &db_conn, user, timeline_opts.page_length, timeline_opts.pages, show_progress)
+            let group_ids = scribe_timeline(&client, &mut db_conn, user, timeline_opts.page_length, timeline_opts.pages, opts.verbose)
                 .await?;
+
+            // Manually close the connection so Postgres has an easier time cleaning it up
+            db_conn.close().await?;
             
-            (parsed, unparsed, existing, None)
+            group_ids
         },
     };
 
-    if show_summary {
-        if show_progress {
-            println!();
-            println!("\u{1f916} Done!");
-            println!();
-        }
-
-        println!("New robot tweets .............. {}", parsed.len());
-        println!("Existing robot tweets ......... {}", existing.len());
-        println!("Non-robot tweets .............. {}", unparsed.len());
-
-        if let Some(not_found) = not_found {
-            println!("Tweets not found by Twitter ... {}", not_found.len());
-        }
-
-        if opts.show_new {
-            println!();
-            println!("New robot tweet IDs: {:?}", parsed);
-        }
+    for group_id in group_ids {
+        println!("{}", group_id);
     }
 
     Ok(())
 }
 
-async fn scribe_timeline(client: &goldcrest::Client, db_conn: &PgConnection, user: goldcrest::UserIdentifier, page_length: u32, pages: usize, show_progress: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
-    let mut parsed_ids = Vec::new();
-    let mut unparsed_ids = Vec::new();
-    let mut existing_ids = Vec::new();
+fn read_tweet_ids() -> Result<Vec<u64>, ReadIdsError> {
+    let stdin = io::stdin();
+    let mut buffer = String::new();
+    stdin.lock().read_to_string(&mut buffer)?;
 
+    buffer
+        .split_whitespace()
+        .map(|id| id
+            .parse::<u64>()
+            .map_err(|_| ReadIdsError::InvalidId(id.to_owned())))
+        .collect::<Result<Vec<_>, _>>()
+}
+
+async fn scribe_timeline(
+    client: &goldcrest::Client,
+    db_conn: &mut PgConnection,
+    user: goldcrest::UserIdentifier,
+    page_length: u32,
+    pages: usize,
+    verbose: bool
+) -> Result<Vec<i32>, ScribeFailure>
+{
+    let mut group_ids = Vec::new();
     let mut max_id = None;
 
-    for i in 0..pages {
-        if show_progress {
-            println!("Page {}", i + 1);
-        }
-
+    for _ in 0..pages {
         let tweet_options = TweetOptions::default();
 
         let timeline_options = TimelineOptions::default().count(page_length);
         let timeline_options = match max_id {
-            None     => timeline_options,
+            None => timeline_options,
             Some(id) => timeline_options.max_id(id),
         };
 
-        let mut tweets = client
-            .user_timeline(user.clone(), timeline_options, tweet_options, true, true)
-            .await?;
-        tweets.retain(|tweet| tweet.id > 0);
+        let tweets = {
+            let mut tweets = client
+                .user_timeline(user.clone(), timeline_options, tweet_options, true, true)
+                .await?;
+            tweets.retain(|tweet| tweet.id > 0);
+            tweets
+        };
 
         if tweets.is_empty() {
-            if show_progress {
-                println!("Empty page, cannot continue");
+            if verbose {
+                eprintln!("empty timeline page reached, stopping");
             }
             break;
         }
@@ -222,155 +216,219 @@ async fn scribe_timeline(client: &goldcrest::Client, db_conn: &PgConnection, use
             .iter()
             .map(|tweet| tweet.id)
             .min()
-            .unwrap() - 1); //Subtract 1 because, at the time of writing, max_id is inclusive
+            //Subtract 1 because, at the time of writing, max_id is inclusive
+            .unwrap() - 1);
 
-        let (page_parsed_ids, page_unparsed_ids, page_existing_ids) = scribe_all(db_conn, tweets, show_progress)?;
-
-        parsed_ids.extend(page_parsed_ids.into_iter());
-        unparsed_ids.extend(page_unparsed_ids.into_iter());
-        existing_ids.extend(page_existing_ids.into_iter());
-
-        if show_progress {
-            println!();
-        }
+        group_ids.extend(
+            scribe_tweets(db_conn, tweets, verbose)
+                .await?
+                .into_iter());
     }
 
-    Ok((parsed_ids, unparsed_ids, existing_ids))
+    Ok(group_ids)
 }
 
-async fn scribe_ids_batched(client: Arc<goldcrest::Client>, db_conn: &PgConnection, tweet_ids: &[u64], batch_size: usize, show_progress: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
-    let mut parsed = Vec::new();
-    let mut unparsed = Vec::new();
-    let mut existing = Vec::new();
-    let n = tweet_ids.len();
-    let mut i: usize = 0;
-    let mut batch_no = 0;
-    while i < n {
-        if show_progress {
-            println!("Batch {}", batch_no + 1);
-        }
-        let next_i = (i + batch_size).min(n);
-        let (batch_parsed, batch_unparsed, batch_existing) = scribe_ids(client.clone(), db_conn, &tweet_ids[i..next_i], show_progress).await?;
-        parsed.extend(batch_parsed.into_iter());
-        unparsed.extend(batch_unparsed.into_iter());
-        existing.extend(batch_existing.into_iter());
-        i = next_i;
-        batch_no += 1;
+/// Wrapper function around scribe_ids to put a limit on the number of tweets that can be in memory
+/// at once. Each batch is requested, parsed and stored in series. All of the tweet ids within a
+/// given batch will be requested, parsed and stored concurrently.
+async fn scribe_ids_batched(
+    client: Arc<goldcrest::Client>,
+    db_pool: &PgPool,
+    tweet_ids: &[u64],
+    batch_size: usize,
+    verbose: bool
+) -> Result<Vec<i32>, ScribeFailure>
+{
+    let mut group_ids = Vec::new();
+    let num_tweets = tweet_ids.len();
+    let mut min_tweet_index = 0usize;
+
+    while min_tweet_index < num_tweets {
+        let max_tweet_index = (min_tweet_index + batch_size).min(num_tweets);
+        let current_batch = &tweet_ids[min_tweet_index..max_tweet_index];
+
+        group_ids.extend(
+            scribe_ids(client.clone(), db_pool, current_batch, verbose)
+            .await?
+            .into_iter());
+
+        min_tweet_index = max_tweet_index;
     }
-    Ok((parsed, unparsed, existing))
+
+    Ok(group_ids)
 }
 
-async fn scribe_ids(client: Arc<goldcrest::Client>, db_conn: &PgConnection, tweet_ids: &[u64], show_progress: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
-    use tokio::task::JoinHandle;
+/// Splits the given tweet ids into groups of 100, then concurrently requests each group of 100,
+/// parses the received tweets and adds them to the database.
+async fn scribe_ids(
+    client: Arc<goldcrest::Client>,
+    db_pool: &PgPool,
+    tweet_ids: &[u64],
+    verbose: bool
+) -> Result<Vec<i32>, ScribeFailure>
+{
+    const TWEETS_PER_REQUEST: usize = 100;
 
     let mut tweet_ids = tweet_ids.to_vec();
     tweet_ids.sort();
     tweet_ids.dedup();
     let n_tweet_ids = tweet_ids.len();
 
-    let mut join_handles = Vec::<JoinHandle<ScribeResult<Vec<Tweet>>>>::new();
-    {
-        const BATCH_SIZE: usize = 100;
-        let mut assigned: usize = 0;
-        while assigned < n_tweet_ids {
-            let max_id = (assigned + BATCH_SIZE).min(n_tweet_ids);
-            let ids = (&tweet_ids[assigned..max_id]).to_vec();
-            let client = client.clone();
-            join_handles.push(tokio::spawn(async move {
-                client
-                    .get_tweets(ids, TweetOptions::default())
-                    .await
-                    .map_err(|err| ScribeError::from(err))
-            }));
-            assigned = max_id;
-        }
+    let mut join_handles = Vec::new();
+    
+    let mut assigned: usize = 0;
+    while assigned < n_tweet_ids {
+        let max_id = (assigned + TWEETS_PER_REQUEST).min(n_tweet_ids);
+        let ids = (&tweet_ids[assigned..max_id]).to_vec();
+
+        let client = client.clone();
+        // Clone the pool because it's just a wrapper around an Arc
+        let db_pool = db_pool.clone();
+
+        join_handles.push(tokio::spawn(async move {
+            let tweets_res = client
+                .get_tweets(ids, TweetOptions::default())
+                .await;
+
+            match tweets_res {
+                Err(err) => Err(err.into()),
+
+                Ok(tweets) => match db_pool.acquire().await {
+                    Err(err) => Err(err.into()),
+
+                    Ok(mut pool_conn) =>
+                        scribe_tweets(&mut pool_conn, tweets, verbose).await,
+                },
+            }
+        }));
+
+        assigned = max_id;
     }
 
-    let mut tweets = Vec::new();
+    let mut group_ids = Vec::new();
     for join_handle in join_handles {
-        tweets.extend(join_handle.await??.into_iter());
+        group_ids.extend(join_handle.await??.into_iter());
     }
 
-    scribe_all(db_conn, tweets, show_progress)
+    Ok(group_ids)
 }
 
-fn scribe_all(db_conn: &PgConnection, tweets: Vec<Tweet>, show_progress: bool) -> ScribeResult<(Vec<u64>, Vec<u64>, Vec<u64>)> {
-    let mut parsed_ids = Vec::new();
-    let mut unparsed_ids = Vec::new();
-    let mut existing_ids = Vec::new();
-
-    let n_tweets = tweets.len();
-    let mut n_tweets_done = 0;
-    let mut last_shown = None;
-
-    if show_progress {
-        println!();
-    }
+/// Parses and stores a collection of tweets in series, skipping any tweets that are not valid
+/// small robots.
+async fn scribe_tweets(
+    db_conn: &mut PgConnection,
+    tweets: Vec<Tweet>,
+    verbose: bool
+) -> Result<Vec<i32>, ScribeFailure>
+{
+    let mut group_ids = Vec::new();
 
     for tweet in tweets {
         let tweet_id = tweet.id;
-        let res = scribe(db_conn, tweet);
-        match res {
-            Ok(true) => &mut parsed_ids,
-            Ok(false) => &mut unparsed_ids,
-            Err(err) => match err {
-                ScribeError::DbError(DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => &mut existing_ids,
-                ScribeError::TweetAlreadyExists => &mut existing_ids,
-                ScribeError::RobotAlreadyExists => &mut existing_ids,
-                err => return Err(err),
-            },
-        }.push(tweet_id);
 
-        n_tweets_done += 1;
-        if show_progress && (n_tweets_done == n_tweets || last_shown.is_none() || Utc::now() - last_shown.unwrap() > Duration::milliseconds(250)) {
-            println!("{}{}Progress: {} / {}", termion::cursor::Up(1), termion::clear::CurrentLine, n_tweets_done, n_tweets);
-            last_shown = Some(Utc::now());
+        match scribe(db_conn, tweet).await {
+            Ok(group_id) => group_ids.push(group_id),
+
+            Err(NotScribed::InvalidTweet(err)) => if verbose {
+                eprintln!("skip tweet {}: {}", tweet_id, err);
+            },
+
+            Err(NotScribed::ScribeFailure(err)) => return Err(err)
         }
     }
 
-    Ok((parsed_ids, unparsed_ids, existing_ids))
+    Ok(group_ids)
 }
 
-fn scribe(db_conn: &PgConnection, tweet: Tweet) -> ScribeResult<bool> {
+/// Parses the given tweet, adds it to the database and returns the id of the new robot group.
+async fn scribe(db_conn: &mut PgConnection, tweet: Tweet) -> Result<i32, NotScribed> {
+    const TEXT_OPTIONS: TweetTextOptions = TweetTextOptions::all()
+        .media(false)
+        .urls(false);
+
     let tweet = tweet.original();
+    let tweet_text = tweet.text(TEXT_OPTIONS);
 
-    db_conn.transaction::<bool, ScribeError, _>(|| {
-        let parse_res = parse_tweet::<_, ScribeResult<()>>(&tweet, |group, robots| {
-            // Check for uniqueness after parsing, since parsing is faster than DB access
-            if !tweet_unique(db_conn, &tweet)? {
-                return Err(ScribeError::TweetAlreadyExists);
-            }
-            let group_id = group.create(db_conn)?.id;
-            for ref robot in robots {
-                if !robot_unique(db_conn, robot)? {
-                    return Err(ScribeError::RobotAlreadyExists);
-                }
-                new_robot(robot, group_id, |robot| {
-                    robot.create(db_conn)
-                })?;
-            }
-            Ok(())
-        });
-        match parse_res {
-            Some(Ok(())) => Ok(true),
-            Some(Err(err)) => Err(err),
-            None => Ok(false),
+    let group = match sbb_parse::parse_group(&tweet_text) {
+        Some(group) if !group.robots.is_empty() => group,
+        _ => return Err(InvalidTweet::ParseUnsuccessful.into()),
+    };
+
+    let body = group.body.trim();
+
+    let media = {
+        let media = tweet.media
+            .iter()
+            .find(|media| is_valid_robot_media(media));
+
+        match media {
+            Some(media) => media,
+            None => return Err(InvalidTweet::MissingMedia.into()),
         }
-    })
+    };
+
+    let media_url = media.media_url.as_str();
+
+    let alt = {
+        let alt = media.alt.trim();
+        if alt.is_empty() {
+            None
+        } else {
+            Some(alt)
+        }
+    };
+
+    let mut tx = db_conn.begin().await?;
+
+    let group_id = sqlx::query!(
+        "INSERT INTO robot_groups \
+            (tweet_id, tweet_time, image_url, body, alt, content_warning) \
+        VALUES \
+            ($1, $2, $3, $4, $5, $6) \
+        ON CONFLICT (tweet_id) DO NOTHING \
+        RETURNING id",
+        /* $1 */ tweet.id as i64,
+        /* $2 */ tweet.created_at,
+        /* $3 */ media_url,
+        /* $4 */ body,
+        /* $5 */ alt,
+        /* $6 */ group.cw,
+    )
+    .fetch_optional(&mut tx)
+    .await?
+    .ok_or(InvalidTweet::DuplicateTweetId(tweet.id))?
+    .id;
+
+    for robot in group.robots {
+        let ident = robot.name.identifier();
+
+        let _robot_id = sqlx::query!(
+            "INSERT INTO robots \
+                (group_id, robot_number, prefix, suffix, plural, ident) \
+            VALUES \
+                ($1, $2, $3, $4, $5, $6) \
+            ON CONFLICT (robot_number, ident) DO NOTHING \
+            RETURNING id",
+            /* $1 */ group_id,
+            /* $2 */ robot.number,
+            /* $3 */ robot.name.prefix.as_ref(),
+            /* $4 */ robot.name.suffix.as_ref(),
+            /* $5 */ robot.name.plural.as_ref().map(Cow::as_ref),
+            /* $6 */ ident.as_str(),
+        )
+        .fetch_optional(&mut tx)
+        .await?
+        .ok_or(InvalidTweet::DuplicateRobot(robot.number, ident))?
+        .id;
+        
+        //TODO: log or output the robot id in some way
+    }
+
+    tx.commit().await?;
+
+    Ok(group_id)
 }
 
-fn tweet_unique(db_conn: &PgConnection, tweet: &Tweet) -> ScribeResult<bool> {
-    use sbb_data::schema::robot_groups::dsl::*;
-    select(exists(robot_groups.filter(tweet_id.eq(tweet.id as i64))))
-        .get_result::<bool>(db_conn)
-        .map_err(|err| err.into())
-        .map(|x| !x)
-}
-
-fn robot_unique(db_conn: &PgConnection, robot: &sbb_parse::Robot) -> ScribeResult<bool> {
-    use sbb_data::schema::robots::dsl::*;
-    select(exists(robots.filter(prefix.eq(robot.name.prefix).and(robot_number.eq(robot.number)))))
-        .get_result::<bool>(db_conn)
-        .map_err(|err| err.into())
-        .map(|x| !x)
+fn is_valid_robot_media(media: &Media) -> bool {
+    media.media_type == "photo" || media.media_type == "animated_gif" || media.media_type == "video"
 }

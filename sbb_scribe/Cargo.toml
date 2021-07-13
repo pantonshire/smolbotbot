@@ -11,11 +11,11 @@ default = ["dotenv"]
 
 [dependencies]
 services = { path = "../services" }
-sbb_parse = { path = "../sbb_parse", features = ["twitter"] }
+sbb_parse = { path = "../sbb_parse" }
 goldcrest = { git = "https://github.com/Pantonshire/goldcrest", branch = "main" }
+anyhow = "1"
 tokio = { version = "1", features = ["full"] }
 sqlx = { version = "0.5", features = [ "runtime-tokio-rustls", "postgres" ] }
 chrono = "0.4"
 clap = "3.0.0-beta.2"
-termion = "1"
 dotenv = { version = "0.15", optional = true }
