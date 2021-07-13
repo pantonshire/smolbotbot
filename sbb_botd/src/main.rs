@@ -170,6 +170,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Tweet link: {}", robot.tweet_url());
     }
 
+    db_conn.close().await?;
+
     Ok(())
 }
 

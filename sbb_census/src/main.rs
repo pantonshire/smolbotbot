@@ -28,7 +28,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?
         .block_on(async move {
             match PgConnection::connect(&db_url).await {
-                Ok(mut db_conn) => get_tweet_ids(&mut db_conn).await,
+                Ok(mut db_conn) => {
+                    let tweet_ids = get_tweet_ids(&mut db_conn).await;
+                    db_conn.close().await.and(tweet_ids)
+                },
                 Err(err) => Err(err),
             }
         })?;

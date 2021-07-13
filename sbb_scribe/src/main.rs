@@ -16,7 +16,7 @@ use goldcrest::request::{TweetOptions, TimelineOptions};
 
 use services::GoldcrestService;
 
-use error::{NotScribed, InvalidTweet, ScribeFailure, ReadIdsError};
+use error::{NotScribed, InvalidTweet, ScribeFailure};
 
 #[derive(Clap)]
 #[clap(version = crate_version!(), author = crate_authors!(), about = crate_description!())]
@@ -180,7 +180,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn read_tweet_ids() -> Result<Vec<u64>, ReadIdsError> {
+fn read_tweet_ids() -> anyhow::Result<Vec<u64>> {
     let stdin = io::stdin();
     let mut buffer = String::new();
     stdin.lock().read_to_string(&mut buffer)?;
@@ -189,7 +189,7 @@ fn read_tweet_ids() -> Result<Vec<u64>, ReadIdsError> {
         .split_whitespace()
         .map(|id| id
             .parse::<u64>()
-            .map_err(|_| ReadIdsError::InvalidId(id.to_owned())))
+            .map_err(|_| anyhow!("could not parse tweet id from \"{}\"", id.to_owned())))
         .collect::<Result<Vec<_>, _>>()
 }
 

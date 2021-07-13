@@ -1,6 +1,5 @@
 use std::error;
 use std::fmt;
-use std::io;
 
 /// Contains information about why a tweet was not successfully processed by sbb_scribe.
 #[derive(Debug)]
@@ -107,28 +106,5 @@ impl From<sqlx::Error> for ScribeFailure {
 impl From<tokio::task::JoinError> for ScribeFailure {
     fn from(err: tokio::task::JoinError) -> Self {
         Self::JoinError(Box::new(err))
-    }
-}
-
-#[derive(Debug)]
-pub(crate) enum ReadIdsError {
-    IoError(Box<io::Error>),
-    InvalidId(String),
-}
-
-impl fmt::Display for ReadIdsError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::IoError(err) => err.fmt(f),
-            Self::InvalidId(invalid_id) => write!(f, "string \"{}\" is not a valid tweet id", invalid_id),
-        }
-    }
-}
-
-impl error::Error for ReadIdsError {}
-
-impl From<io::Error> for ReadIdsError {
-    fn from(err: io::Error) -> Self {
-        Self::IoError(Box::new(err))
     }
 }
