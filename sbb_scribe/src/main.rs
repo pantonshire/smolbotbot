@@ -45,9 +45,10 @@ enum Subcommand {
 
 #[derive(Clap)]
 struct IdsCommand {
-    /// The maximum number of Tweets that can be requested concurrently
-    #[clap(short, long, default_value = "400")]
-    batch_size: usize,
+    /// The maximum number of tweets that can be requested concurrently. If omitted, all tweets
+    /// will be requested concurrently.
+    #[clap(short, long)]
+    batch_size: Option<usize>,
 }
 
 #[derive(Clap)]
@@ -109,8 +110,10 @@ async fn main() -> anyhow::Result<()> {
 
     let group_ids = match opts.subcommand {
         Subcommand::Ids(ids_opts) => {
-            if ids_opts.batch_size < 1 {
-                return Err(anyhow!("batch size must be at least 1"));
+            if let Some(batch_size) = ids_opts.batch_size {
+                if batch_size < 1 {
+                    return Err(anyhow!("batch size must be at least 1"));
+                }
             }
 
             // We will be accessing the database concurrently, so make a pool rather than just a
@@ -121,9 +124,20 @@ async fn main() -> anyhow::Result<()> {
             };
             
             let group_ids = {
+                // Get the list of tweet ids from stdin
                 let tweet_ids = read_tweet_ids()?;
-                scribe_ids_batched(client, &db_pool, &tweet_ids, ids_opts.batch_size, opts.verbose)
-                    .await?
+                
+                match ids_opts.batch_size {
+                    // If a batch size was specified, split the tweet ids into batches
+                    Some(batch_size) =>
+                        batched_fetch_and_scribe(client, &db_pool, &tweet_ids, batch_size, opts.verbose)
+                            .await?,
+                    
+                    // If no batch size was specified, process all tweet ids concurrently at once
+                    None =>
+                        fetch_and_scribe(client, &db_pool, &tweet_ids, opts.verbose)
+                            .await?,
+                }
             };
 
             // Manually close all of the pool's connections so that Postgres has an easier time
@@ -140,12 +154,14 @@ async fn main() -> anyhow::Result<()> {
                 PgConnection::connect(&db_url).await?
             };
 
+            // Ignore the leading @ if one was included, e.g. @smolrobots -> smolrobots
             let handle = timeline_opts.user
                 .strip_prefix("@")
                 .map(str::to_owned)
                 .unwrap_or(timeline_opts.user);
             let user = goldcrest::UserIdentifier::Handle(handle);
 
+            // Traverse the user's timeline, parsing the tweets and adding new robots to the database
             let group_ids = scribe_timeline(&client, &mut db_conn, user, timeline_opts.page_length, timeline_opts.pages, opts.verbose)
                 .await?;
 
@@ -156,6 +172,7 @@ async fn main() -> anyhow::Result<()> {
         },
     };
 
+    // Output the ids of the new robot groups, to be used by other processes
     for group_id in group_ids {
         println!("{}", group_id);
     }
@@ -231,7 +248,7 @@ async fn scribe_timeline(
 /// Wrapper function around scribe_ids to put a limit on the number of tweets that can be in memory
 /// at once. Each batch is requested, parsed and stored in series. All of the tweet ids within a
 /// given batch will be requested, parsed and stored concurrently.
-async fn scribe_ids_batched(
+async fn batched_fetch_and_scribe(
     client: Arc<goldcrest::Client>,
     db_pool: &PgPool,
     tweet_ids: &[u64],
@@ -248,9 +265,9 @@ async fn scribe_ids_batched(
         let current_batch = &tweet_ids[min_tweet_index..max_tweet_index];
 
         group_ids.extend(
-            scribe_ids(client.clone(), db_pool, current_batch, verbose)
-            .await?
-            .into_iter());
+            fetch_and_scribe(client.clone(), db_pool, current_batch, verbose)
+                .await?
+                .into_iter());
 
         min_tweet_index = max_tweet_index;
     }
@@ -260,7 +277,7 @@ async fn scribe_ids_batched(
 
 /// Splits the given tweet ids into groups of 100, then concurrently requests each group of 100,
 /// parses the received tweets and adds them to the database.
-async fn scribe_ids(
+async fn fetch_and_scribe(
     client: Arc<goldcrest::Client>,
     db_pool: &PgPool,
     tweet_ids: &[u64],
@@ -326,7 +343,7 @@ async fn scribe_tweets(
     for tweet in tweets {
         let tweet_id = tweet.id;
 
-        match scribe(db_conn, tweet).await {
+        match scribe_tweet(db_conn, tweet).await {
             Ok(group_id) => group_ids.push(group_id),
 
             Err(NotScribed::InvalidTweet(err)) => if verbose {
@@ -341,7 +358,7 @@ async fn scribe_tweets(
 }
 
 /// Parses the given tweet, adds it to the database and returns the id of the new robot group.
-async fn scribe(db_conn: &mut PgConnection, tweet: Tweet) -> Result<i32, NotScribed> {
+async fn scribe_tweet(db_conn: &mut PgConnection, tweet: Tweet) -> Result<i32, NotScribed> {
     const TEXT_OPTIONS: TweetTextOptions = TweetTextOptions::all()
         .media(false)
         .urls(false);
