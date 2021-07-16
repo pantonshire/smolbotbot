@@ -23,7 +23,7 @@ CREATE TABLE robots (
     plural        TEXT,
     ident         TEXT NOT NULL,
     
-    UNIQUE (robot_number, ident)
+    UNIQUE (ident, robot_number)
 );
 
 CREATE INDEX ix_robots_robot_number ON robots USING btree (robot_number);
