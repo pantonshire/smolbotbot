@@ -1,12 +1,15 @@
 CREATE TABLE robot_groups (
-    id               SERIAL4 PRIMARY KEY,
-    tweet_id         INT8 NOT NULL UNIQUE,
-    tweet_time       TIMESTAMP WITH TIME ZONE NOT NULL,
-    image_url        TEXT NOT NULL,
-    body             TEXT NOT NULL,
-    alt              TEXT,
-    content_warning  TEXT,
-    tags             TEXT ARRAY
+    id                SERIAL4 PRIMARY KEY,
+    tweet_id          INT8 NOT NULL UNIQUE,
+    tweet_time        TIMESTAMP WITH TIME ZONE NOT NULL,
+    image_url         TEXT NOT NULL,
+    body              TEXT NOT NULL,
+    alt               TEXT,
+    content_warning   TEXT,
+    tags              TEXT ARRAY,
+    custom_alt        TEXT,
+    image_path        TEXT,
+    image_thumb_path  TEXT
 );
 
 CREATE INDEX ix_robot_groups_tags ON robot_groups USING gin (tags);
@@ -23,10 +26,7 @@ CREATE TABLE robots (
     UNIQUE (robot_number, ident)
 );
 
-CREATE TABLE missing_alt (
-    group_id  INT4 PRIMARY KEY REFERENCES robot_groups (id) ON DELETE CASCADE,
-    alt       TEXT NOT NULL
-);
+CREATE INDEX ix_robots_robot_number ON robots USING btree (robot_number);
 
 CREATE TABLE past_dailies (
     id         SERIAL4 PRIMARY KEY,
