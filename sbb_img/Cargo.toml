@@ -1,0 +1,22 @@
+[package]
+name = "sbb_img"
+version = "0.1.0"
+authors = ["Tom Panton <pantonshire@gmail.com>"]
+edition = "2018"
+license = "MIT"
+description = "Tool for downloading and processing small robots images"
+
+[features]
+default = ["dotenv"]
+
+[dependencies]
+anyhow = "1"
+clap = "3.0.0-beta.2"
+tokio = { version = "1", features = ["full"] }
+sqlx = { version = "0.5", features = [ "runtime-tokio-rustls", "postgres" ] }
+reqwest = { version = "0.11", features = ["rustls-tls"], default-features = false }
+governor = "0.3"
+image = { version = "0.23", features = ["jpeg", "png"], default-features = false }
+url = "2"
+nonzero_ext = "0.2"
+dotenv = { version = "0.15", optional = true }

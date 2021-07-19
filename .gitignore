@@ -8,3 +8,4 @@ services.yaml
 
 target/
 experiment/
+robot_images/
