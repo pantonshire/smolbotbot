@@ -287,7 +287,7 @@ async fn fetch_and_scribe(
     const TWEETS_PER_REQUEST: usize = 100;
 
     let mut tweet_ids = tweet_ids.to_vec();
-    tweet_ids.sort();
+    tweet_ids.sort_unstable();
     tweet_ids.dedup();
     let n_tweet_ids = tweet_ids.len();
 

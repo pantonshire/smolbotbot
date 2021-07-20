@@ -451,7 +451,7 @@ async fn gen_thumb(
 fn is_approx_grayscale(image: &DynamicImage, threshold: f32) -> bool {
     const STRIDE: u32 = 16;
     const CHANNEL_MAX: f32 = 255.0;
-    const INV_SQRT3: f32 = 0.5773502692;
+    const INV_SQRT3: f32 = 0.577_350_26;
 
     let channel_sum = image
         .pixels()

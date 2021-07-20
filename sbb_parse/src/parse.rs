@@ -112,16 +112,11 @@ fn parse_cw(s: &str) -> ParseOut<Option<&str>> {
 }
 
 fn parse_numbers(s: &str) -> OptParseOut<Range<i32>> {
-    let split_vec = s
-        .splitn(2, ")")
-        .collect::<Vec<&str>>();
+    let (s, rem) = s
+        .split_once(')')?;
 
-    if split_vec.len() < 2 {
-        return None;
-    }
-
-    let s = split_vec[0].trim();
-    let rem = split_vec[1].trim_start();
+    let s = s.trim();
+    let rem = rem.trim_start();
 
     let mut ns = Vec::<i32>::new();
 
@@ -278,8 +273,7 @@ fn parse_names(s: &str, target_n: usize) -> OptParseOut<(Vec<RobotName>, bool)> 
             .split_whitespace()
             .filter(|&w| w.to_lowercase() != "and")
             .map(|w| PARTIAL_BOT_RE.captures(w))
-            .filter(|m| m.is_some())
-            .map(|m| m.unwrap())
+            .flatten()
             .filter(|m| m[1].chars().any(|c| !c.is_ascii_digit()))
             .map(|m| RobotName{
                 prefix: Cow::Borrowed(m.get(1).unwrap().as_str()),

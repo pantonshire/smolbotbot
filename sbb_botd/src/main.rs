@@ -144,9 +144,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             message.push_str(&today_str.to_string());
-            message.push_str("\n");
+            message.push('\n');
             message.push_str(greeting);
-            message.push_str(" ");
+            message.push(' ');
             message.push_str(intro);
             message.push_str(" #");
             message.push_str(&robot.robot_number.to_string());
