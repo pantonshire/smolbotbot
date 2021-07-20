@@ -2,15 +2,14 @@ mod error;
 
 use std::io::{self, Read};
 use std::env;
-use std::path::{PathBuf, Path, StripPrefixError};
+use std::path::{PathBuf, Path};
 use std::sync::Arc;
 
 use anyhow::anyhow;
 use clap::{Clap, crate_version, crate_authors, crate_description};
-use tokio::io::AsyncWriteExt;
 use tokio::sync::Semaphore;
 use sqlx::postgres::{PgConnection, PgPool};
-use image::{ImageFormat, DynamicImage, GenericImageView};
+use image::{ImageFormat, DynamicImage, GenericImageView, ImageEncoder};
 use image::imageops::FilterType;
 use image::codecs::jpeg;
 use governor::{Quota, RateLimiter};
@@ -22,10 +21,6 @@ use error::{ImgError, ImgErrorCause};
 #[derive(Clap)]
 #[clap(version = crate_version!(), author = crate_authors!(), about = crate_description!())]
 struct Opts {
-    /// If set, paths stored in the database will be relative to this path
-    #[clap(short, long)]
-    relative: Option<PathBuf>,
-
     /// If set, download the images and store them in this directory
     #[clap(short, long = "download")]
     download_dir: Option<PathBuf>,
@@ -36,14 +31,26 @@ struct Opts {
 }
 
 #[derive(Clone, Debug)]
-struct GroupImageInfo {
+struct GroupImageUrl {
     id: i32,
     image_url: String,
 }
 
-//TODO: only download if download_dir specified
-//TODO: set exit status to nonzero if there was a "report" error severity (but do not abort immediately)
+#[derive(Clone, Debug)]
+struct GroupImagePath {
+    id: i32,
+    image_path: String,
+}
+
+#[derive(Clone, Debug)]
+struct GroupImagePathOpt {
+    id: i32,
+    image_path: Option<String>,
+}
+
 //TODO: option to get images / thumbs for all robots who currently don't have one
+
+const THUMB_SIZE: u32 = 192;
 
 fn main() -> anyhow::Result<()> {
     #[cfg(feature = "dotenv")] {
@@ -72,39 +79,29 @@ fn main() -> anyhow::Result<()> {
 }
 
 async fn run(opts: Opts, group_ids: Vec<i32>) -> anyhow::Result<()> {
-    let download_dirs = opts.download_dir
-        .as_deref()
-        .map(|download_dir| image_dirs(download_dir, opts.relative.as_deref()))
-        .transpose()?;
-
-    let thumb_dirs = opts.thumb_dir
-        .as_deref()
-        .map(|thumb_dir| image_dirs(thumb_dir, opts.relative.as_deref()))
-        .transpose()?;
-
     let db_pool = {
         let db_url = env::var("DATABASE_URL")?;
         PgPool::connect(&db_url).await?
     };
 
-    let groups = {
-        let mut db_conn = db_pool.acquire().await?;
-        let groups = get_image_urls(&mut db_conn, &group_ids).await?;
-        drop(group_ids);
-        groups
-    };
-
     let mut all_succeeded = true;
 
-    let groups = match download_dirs {
-        Some((download_dir, db_download_dir)) => {
+    let groups = match opts.download_dir {
+        // Download the images and store the paths in the database
+        Some(download_dir) => {
+            let groups = {
+                let mut db_conn = db_pool.acquire().await?;
+                let groups = get_image_urls(&mut db_conn, &group_ids).await?;
+                drop(group_ids);
+                groups
+            };
+
             let http_client = reqwest::Client::new();
 
             let image_results = get_images(
                 &db_pool,
                 &http_client,
-                download_dir,
-                db_download_dir,
+                &download_dir,
                 groups
             ).await;
             
@@ -122,12 +119,48 @@ async fn run(opts: Opts, group_ids: Vec<i32>) -> anyhow::Result<()> {
             successful_groups
         },
 
-        None => groups,
+        // Retrieve the paths of the pre-downloaded images from the database
+        None => {
+            let mut db_conn = db_pool.acquire().await?;
+            
+            let opt_groups = get_image_paths(&mut db_conn, &group_ids).await?;
+            drop(group_ids);
+
+            let mut groups = Vec::new();
+            for opt_group in opt_groups {
+                match opt_group.image_path {
+                    Some(image_path) => groups.push(GroupImagePath {
+                        id: opt_group.id,
+                        image_path,
+                    }),
+
+                    None => {
+                        all_succeeded = false;
+                        eprintln!("group {} has no image to generate a thumb from", opt_group.id);
+                    },
+                }
+            }
+
+            groups
+        },
     };
 
-    println!("{:?}", groups);
+    // Generate image thumbs and store the paths in the database
+    if let Some(thumb_dir) = opts.thumb_dir {
+        let thumb_results = gen_thumbs(
+            &db_pool,
+            groups,
+            &thumb_dir,
+            THUMB_SIZE
+        ).await;
 
-    //TODO: generate thumbs concurrently
+        for res in thumb_results {
+            if let Err(err) = res {
+                all_succeeded = false;
+                eprintln!("{}", err);
+            }
+        }
+    }
 
     db_pool.close().await;
 
@@ -140,10 +173,10 @@ async fn run(opts: Opts, group_ids: Vec<i32>) -> anyhow::Result<()> {
 async fn get_image_urls(
     db_conn: &mut PgConnection,
     group_ids: &[i32]
-) -> sqlx::Result<Vec<GroupImageInfo>>
+) -> sqlx::Result<Vec<GroupImageUrl>>
 {
     sqlx::query_as!(
-        GroupImageInfo,
+        GroupImageUrl,
         "SELECT id, image_url FROM robot_groups \
         WHERE id = ANY($1)",
         group_ids
@@ -152,13 +185,30 @@ async fn get_image_urls(
     .await
 }
 
-async fn get_images(
+async fn get_image_paths(
+    db_conn: &mut PgConnection,
+    group_ids: &[i32]
+) -> sqlx::Result<Vec<GroupImagePathOpt>>
+{
+    sqlx::query_as!(
+        GroupImagePathOpt,
+        "SELECT id, image_path FROM robot_groups \
+        WHERE id = ANY($1) \
+        AND image_path IS NOT NULL",
+        group_ids
+    )
+    .fetch_all(db_conn)
+    .await
+}
+
+async fn get_images<P>(
     db_pool: &PgPool,
     http_client: &reqwest::Client,
-    output_dir: &Path,
-    store_dir: &Path,
-    groups: Vec<GroupImageInfo>
-) -> Vec<Result<GroupImageInfo, ImgError>>
+    output_dir: P,
+    groups: Vec<GroupImageUrl>
+) -> Vec<Result<GroupImagePath, ImgError>>
+where
+    P: AsRef<Path>
 {
     const MAX_CONCURRENT: usize = 16;
     const REQUESTS_PER_SECOND: u32 = 10;
@@ -177,20 +227,19 @@ async fn get_images(
         let http_client = http_client.clone();
 
         let file_name = format!("group_{}_orig.png", group.id);
-
-        let output_path = output_dir.join(&file_name);
-        let store_path = store_dir.join(&file_name);
+        let output_path = output_dir.as_ref().join(&file_name);
 
         join_handles.push((group.id, tokio::spawn(async move {
-            match store_path.to_str() {
-                Some(store_path) => match semaphore.acquire().await {
-                    Ok(permit) => {
+            match output_path.to_str() {
+                Some(output_path) => match semaphore.acquire().await {
+                    Ok(_permit) => {
                         limiter.until_ready().await;
-                        let res = download_and_store(&db_pool, &http_client, &group, &output_path, store_path)
+                        download_and_store(&db_pool, &http_client, &group, output_path)
                             .await
-                            .map(move |_| group);
-                        drop(permit);
-                        res
+                            .map(move |_| GroupImagePath {
+                                id: group.id,
+                                image_path: output_path.to_owned(),
+                            })
                     },
 
                     Err(err) => Err(ImgError::new(group.id, err.into())),
@@ -215,9 +264,8 @@ async fn get_images(
 async fn download_and_store(
     db_pool: &PgPool,
     http_client: &reqwest::Client,
-    group: &GroupImageInfo,
-    output_path: &Path,
-    store_path: &str,
+    group: &GroupImageUrl,
+    output_path: &str,
 ) -> Result<(), ImgError>
 {
     download_image(http_client, group, output_path).await?;
@@ -227,14 +275,16 @@ async fn download_and_store(
         .await
         .map_err(|err| ImgError::new(group.id, err.into()))?;
 
-    store_image_path(&mut db_conn, group, store_path).await
+    store_image_path(&mut db_conn, group, output_path).await
 }
 
-async fn download_image(
+async fn download_image<P>(
     http_client: &reqwest::Client,
-    group: &GroupImageInfo,
-    output_path: &Path,
+    group: &GroupImageUrl,
+    path: P,
 ) -> Result<(), ImgError>
+where
+    P: AsRef<Path>
 {
     let image_url = image_large_png_url(&group.image_url)
         .map_err(|err| ImgError::new(group.id, err.into()))?;
@@ -251,7 +301,7 @@ async fn download_image(
                 .await
                 .map_err(|err| ImgError::new(group.id, err.into()))?;
 
-            write_file(&output_path, &image_data)
+            tokio::fs::write(path, &image_data)
                 .await
                 .map_err(|err| ImgError::new(group.id, err.into()))
         },
@@ -262,47 +312,140 @@ async fn download_image(
 
 async fn store_image_path(
     db_conn: &mut PgConnection,
-    group: &GroupImageInfo,
-    store_path: &str,
+    group: &GroupImageUrl,
+    path: &str,
 ) -> Result<(), ImgError>
 {
-    sqlx::query!(
+    let rows_affected = sqlx::query!(
         "UPDATE robot_groups SET image_path = $1 WHERE id = $2",
-        store_path,
+        path,
         group.id
     )
     .execute(db_conn)
     .await
-    .map_err(|err| ImgError::new(group.id, err.into()))?;
+    .map_err(|err| ImgError::new(group.id, err.into()))?
+    .rows_affected();
 
-    Ok(())
-}
-
-async fn write_file<P>(path: P, bytes: &[u8]) -> io::Result<()>
-where
-    P: AsRef<Path>
-{
-    tokio::fs::File::create(path)
-        .await?
-        .write_all(bytes)
-        .await
-}
-
-fn gen_thumb(original: &DynamicImage, size: u32, grayscale_threshold: f32) -> DynamicImage {
-    // const GRAYSCALE_THRESHOLD: f32 = 0.001;
-
-    let resized = original.resize_to_fill(size, size, FilterType::Lanczos3);
-
-    if is_approx_grayscale(&resized, grayscale_threshold) {
-        DynamicImage::ImageLuma8(resized.into_luma8())
+    if rows_affected < 1 {
+        Err(ImgError::new(group.id, ImgErrorCause::NoRowsUpdated))
     } else {
-        DynamicImage::ImageRgb8(resized.into_rgb8())
+        Ok(())
     }
 }
 
-//TODO
-async fn save_thumb() {
-    todo!()
+async fn gen_thumbs<P>(
+    db_pool: &PgPool,
+    groups: Vec<GroupImagePath>,
+    output_dir: P,
+    thumb_size: u32
+) -> Vec<Result<(), ImgError>>
+where
+    P: AsRef<Path>
+{
+    const MAX_CONCURRENT: usize = 16;
+    const GRAYSCALE_THRESHOLD: f32 = 0.005;
+    const JPEG_QUALITY: u8 = 50;
+
+    let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT));
+    let mut join_handles = Vec::with_capacity(groups.len());
+
+    for group in groups {
+        let semaphore = semaphore.clone();
+        let db_pool = db_pool.clone();
+
+        let file_name = format!("group_{}_thumb.jpg", group.id);
+        let output_path = output_dir.as_ref().join(&file_name);
+
+        join_handles.push((group.id, tokio::spawn(async move {
+            match output_path.to_str() {
+                Some(output_path) => match semaphore.acquire().await {
+                    Ok(_permit) => gen_thumb(
+                        &db_pool,
+                        &group,
+                        output_path,
+                        thumb_size,
+                        JPEG_QUALITY,
+                        GRAYSCALE_THRESHOLD
+                    ).await,
+
+                    Err(err) => Err(ImgError::new(group.id, err.into())),
+                },
+                
+                None => Err(ImgError::new(group.id, ImgErrorCause::InvalidPath)),
+            }
+        })));
+    }
+
+    let mut results = Vec::with_capacity(join_handles.len());
+
+    for (group_id, join_handle) in join_handles {
+        results.push(join_handle
+            .await
+            .unwrap_or_else(|err| Err(ImgError::new(group_id, err.into()))));
+    }
+
+    results
+}
+
+async fn gen_thumb(
+    db_pool: &PgPool,
+    group: &GroupImagePath,
+    output_path: &str,
+    size: u32,
+    quality: u8,
+    grayscale_threshold: f32
+) -> Result<(), ImgError>
+{
+    let original = {
+        let image_data = tokio::fs::read(&group.image_path)
+            .await
+            .map_err(|err| ImgError::new(group.id, err.into()))?;
+
+        match ImageFormat::from_path(&group.image_path).ok() {
+            Some(image_format) => image::load_from_memory_with_format(&image_data, image_format),
+            None => image::load_from_memory(&image_data),
+        }.map_err(|err| ImgError::new(group.id, err.into()))?
+    };
+
+    let thumb = original.resize_to_fill(size, size, FilterType::Lanczos3);
+
+    let thumb = match is_approx_grayscale(&thumb, grayscale_threshold) {
+        true => DynamicImage::ImageLuma8(thumb.into_luma8()),
+        false => DynamicImage::ImageRgb8(thumb.into_rgb8()),
+    };
+
+    let mut buffer = Vec::new();
+    
+    jpeg::JpegEncoder::new_with_quality(&mut buffer, quality)
+        .write_image(thumb.as_bytes(), thumb.width(), thumb.height(), thumb.color())
+        .map_err(|err| ImgError::new(group.id, err.into()))?;
+
+    drop(thumb);
+
+    tokio::fs::write(output_path, buffer)
+        .await
+        .map_err(|err| ImgError::new(group.id, err.into()))?;
+
+    let mut db_conn = db_pool
+        .acquire()
+        .await
+        .map_err(|err| ImgError::new(group.id, err.into()))?;
+
+    let rows_affected = sqlx::query!(
+        "UPDATE robot_groups SET image_thumb_path = $1 WHERE id = $2",
+        output_path,
+        group.id
+    )
+    .execute(&mut db_conn)
+    .await
+    .map_err(|err| ImgError::new(group.id, err.into()))?
+    .rows_affected();
+
+    if rows_affected < 1 {
+        Err(ImgError::new(group.id, ImgErrorCause::NoRowsUpdated))
+    } else {
+        Ok(())
+    }
 }
 
 fn is_approx_grayscale(image: &DynamicImage, threshold: f32) -> bool {
@@ -328,15 +471,6 @@ fn is_approx_grayscale(image: &DynamicImage, threshold: f32) -> bool {
     ((channel_sum.0 / magnitude) - INV_SQRT3).abs() < threshold
     && ((channel_sum.1 / magnitude) - INV_SQRT3).abs() < threshold
     && ((channel_sum.2 / magnitude) - INV_SQRT3).abs() < threshold
-}
-
-fn image_dirs<'p>(full_dir: &'p Path, relative: Option<&Path>) -> Result<(&'p Path, &'p Path), StripPrefixError> {
-    match relative {
-        Some(relative) => full_dir
-            .strip_prefix(relative)
-            .map(|db_dir| (full_dir, db_dir)),
-        None => Ok((full_dir, full_dir)),
-    }
 }
 
 fn image_large_png_url(url: &str) -> Result<Url, url::ParseError> {
