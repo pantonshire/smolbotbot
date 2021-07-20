@@ -7,7 +7,6 @@ const DEFAULT_PATH: &'static str = "services.yaml";
 #[derive(Deserialize, Clone, Debug)]
 pub struct Services {
     pub goldcrest: Option<GoldcrestService>,
-    pub nlpewee: Option<NLPeweeService>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -30,13 +29,6 @@ pub struct GoldcrestAuthentication {
     pub consumer_secret: String,
     pub access_token: String,
     pub token_secret: String,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-pub struct NLPeweeService {
-    pub scheme: String,
-    pub host: String,
-    pub port: u32,
 }
 
 /// Attempts to load the YAML services specification at the given path.

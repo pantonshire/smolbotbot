@@ -1,19 +1,12 @@
-#[macro_use]
-extern crate diesel;
-
-mod error;
-
-use error::BotdError;
-
-use services::GoldcrestService;
-use sbb_data::*;
-
 use goldcrest::{TweetOptions, TweetBuilder};
 
 use std::env;
-use diesel::prelude::*;
-use chrono::{prelude::*, Duration};
+use lazy_static::lazy_static;
+use chrono::{Utc, NaiveDate, Duration};
 use clap::{Clap, crate_version, crate_authors, crate_description};
+use sqlx::{Connection, postgres::PgConnection, FromRow};
+
+use services::GoldcrestService;
 
 #[derive(Clap)]
 #[clap(version = crate_version!(), author = crate_authors!(), about = crate_description!())]
@@ -27,7 +20,7 @@ struct Opts {
     goldcrest_auth: Option<String>,
     /// The number of days before a robot group can be selected again after being selected
     #[clap(short, long, default_value = "14")]
-    no_repeat_days: i32,
+    no_repeat_days: i64,
     /// Delete old scheduled dailies
     #[clap(short, long)]
     cleanup: bool,
@@ -36,20 +29,54 @@ struct Opts {
     dry_run: bool,
 }
 
-mod function {
-    use diesel::sql_types::*;
-    no_arg_sql_function!(random, Integer, "SQL RANDOM() function");
+#[derive(FromRow)]
+struct DailyRobot {
+    id: i32,
+    robot_number: i32,
+    prefix: String,
+    suffix: String,
+    plural: Option<String>,
+    tweet_id: i64,
+    content_warning: Option<String>,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+impl DailyRobot {
+    fn full_name(&self) -> String {
+        let mut name_buf = String::with_capacity(
+            self.prefix.len()
+            + self.suffix.len()
+            + self.plural.as_deref().map_or(0, |plural| plural.len())
+        );
+
+        name_buf.push_str(&self.prefix);
+        name_buf.push_str(&self.suffix);
+
+        if let Some(ref plural) = self.plural {
+            name_buf.push_str(plural);
+        }
+
+        name_buf
+    }
+
+    fn tweet_url(&self) -> String {
+        format!("https://twitter.com/smolrobots/status/{}", self.tweet_id)
+    }
+}
+
+lazy_static! {
+    static ref TODAY_UTC: NaiveDate = Utc::now().date().naive_utc();
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(feature = "dotenv")] {
+        dotenv::dotenv().ok();
+    }
+
     let opts: Opts = Opts::parse();
 
     let greetings = lines(include_str!("greetings"));
     let intros = lines(include_str!("intros"));
-
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()?;
 
     let client = if opts.dry_run {
         None
@@ -86,23 +113,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             client.wait_timeout(Duration::seconds(timeout));
         }
 
-        Some(runtime.block_on(client.connect())?)
+        Some(client.connect().await?)
     };
 
-    let db_conn = sbb_data::connect_env()?;
+    let mut db_conn = {
+        let db_url = env::var("DATABASE_URL")?;
+        PgConnection::connect(&db_url).await?
+    };
 
     if opts.cleanup {
-        cleanup_old_scheduled(&db_conn)?;
+        cleanup_old_scheduled(&mut db_conn).await?;
     }
 
-    let no_repeat_days = if opts.no_repeat_days <= 0 {
-        None
-    } else {
-        Some(opts.no_repeat_days)
-    };
-
-    let robot = select_robot(&db_conn, no_repeat_days)?;
-    let group = group_by_id(&db_conn, robot.robot_group_id)?;
+    let robot = select_robot(&mut db_conn, opts.no_repeat_days).await?;
 
     if let Some(client) = client {
         let greeting = greetings[fastrand::usize(0..greetings.len())];
@@ -111,104 +134,122 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let today = Utc::now().date().naive_utc();
         let today_str = today.format("%d/%m/%y");
 
-        let message = format!("{}\n{} {} #{}, {}!\n{}",
-                              today_str,
-                              greeting,
-                              intro,
-                              robot.robot_number,
-                              robot.full_name(),
-                              group.tweet_link());
+        let message = {
+            let mut message = String::new();
+
+            if let Some(ref content_warning) = robot.content_warning {
+                message.push_str("[CW: ");
+                message.push_str(content_warning);
+                message.push_str("]\n");
+            }
+
+            message.push_str(&today_str.to_string());
+            message.push('\n');
+            message.push_str(greeting);
+            message.push(' ');
+            message.push_str(intro);
+            message.push_str(" #");
+            message.push_str(&robot.robot_number.to_string());
+            message.push_str(", ");
+            message.push_str(&robot.full_name());
+            message.push_str("!\n");
+            message.push_str(&robot.tweet_url());
+
+            message
+        };
 
         let tweet = TweetBuilder::new(message);
 
-        db_conn.transaction::<(), BotdError, _>(|| {
-            record_past_daily(&db_conn, today, robot.id)?;
-            runtime.block_on(client.publish(tweet, TweetOptions::default()))?;
-            Ok(())
-        })?;
+        let mut tx = db_conn.begin().await?;
+        record_past_daily(&mut tx, today, robot.id).await?;
+        client.publish(tweet, TweetOptions::default()).await?;
+        tx.commit().await?;
     } else {
         println!("\u{1f916} Small Robot of the Day");
         println!("#{}: {}", robot.robot_number, robot.full_name());
-        println!("Tweet link: {}", group.tweet_link());
+        println!("Tweet link: {}", robot.tweet_url());
     }
+
+    db_conn.close().await?;
 
     Ok(())
 }
 
 fn lines(contents: &str) -> Vec<&str> {
     contents
-        .split("\n")
-        .map(str::trim)
-        .filter(|l| !l.is_empty())
+        .lines()
+        .filter_map(|line| match line.trim() {
+            s if s.is_empty() => None,
+            s => Some(s),
+        })
         .collect()
 }
 
-fn select_robot(db_conn: &PgConnection, no_repeat_days: Option<i32>) -> QueryResult<Robot> {
-    if let Some(robot) = scheduled_robot(db_conn)? {
-        return Ok(robot);
+async fn select_robot(db_conn: &mut PgConnection, no_repeat_days: i64) -> sqlx::Result<DailyRobot> {
+    match scheduled_robot(db_conn).await? {
+        Some(scheduled) => Ok(scheduled),
+        None => random_robot(db_conn, no_repeat_days).await,
     }
-    random_robot(db_conn, no_repeat_days)
 }
 
-fn group_by_id(db_conn: &PgConnection, id: i64) -> QueryResult<RobotGroup> {
-    use schema::*;
-    robot_groups::table
-        .filter(robot_groups::id.eq(id))
-        .first(db_conn)
-}
-
-fn record_past_daily(db_conn: &PgConnection, date: NaiveDate, robot_id: i64) -> QueryResult<()> {
-    NewPastDaily{
-        posted_on: date,
+async fn record_past_daily(db_conn: &mut PgConnection, date: NaiveDate, robot_id: i32) -> sqlx::Result<()> {
+    sqlx::query!(
+        "INSERT INTO past_dailies (posted_on, robot_id) VALUES ($1, $2)",
+        date,
         robot_id,
-    }.create(db_conn)?;
-    Ok(())
+    )
+    .execute(db_conn)
+    .await
+    .map(|_| ())
 }
 
-fn scheduled_robot(db_conn: &PgConnection) -> QueryResult<Option<Robot>> {
-    use diesel::dsl::{now, date, exists};
-    use schema::*;
-
-    let res = robots::table.filter(
-            exists(scheduled_dailies::table
-                .filter(robots::id.eq(scheduled_dailies::robot_id)
-                    .and(scheduled_dailies::post_on.eq(date(now))))))
-        .first(db_conn);
-
-    match res {
-        Ok(robot) => Ok(Some(robot)),
-        Err(diesel::NotFound) => Ok(None),
-        Err(err) => Err(err),
-    }
+async fn scheduled_robot(db_conn: &mut PgConnection) -> sqlx::Result<Option<DailyRobot>> {
+    sqlx::query_as!(
+        DailyRobot,
+        "SELECT \
+            robots.id, robots.robot_number, robots.prefix, robots.suffix, robots.plural, \
+            robot_groups.tweet_id, robot_groups.content_warning \
+        FROM robots INNER JOIN robot_groups ON robots.group_id = robot_groups.id \
+        WHERE EXISTS (\
+            SELECT 1 FROM scheduled_dailies \
+            WHERE \
+                robots.id = scheduled_dailies.robot_id \
+                AND scheduled_dailies.post_on = $1) \
+        LIMIT 1",
+        *TODAY_UTC
+    )
+    .fetch_optional(db_conn)
+    .await
 }
 
-fn random_robot(db_conn: &PgConnection, no_repeat_days: Option<i32>) -> QueryResult<Robot> {
-    use diesel::dsl::{now, date, not, IntervalDsl};
-    use schema::*;
+async fn random_robot(db_conn: &mut PgConnection, no_repeat_days: i64) -> sqlx::Result<DailyRobot> {
+    let reuse_cutoff_date = *TODAY_UTC - Duration::days(no_repeat_days);
 
-    let recent_groups: Vec<i64> = match no_repeat_days {
-        Some(days) => past_dailies::table
-            .inner_join(robots::table)
-            .filter(past_dailies::posted_on.ge(date(now - days.days())))
-            .select(robots::robot_group_id)
-            .distinct()
-            .load(db_conn)?,
-        None => Vec::new(),
-    };
-
-    robots::table
-        .filter(not(robots::robot_group_id.eq_any(&recent_groups)))
-        .order(function::random)
-        .first(db_conn)
+    sqlx::query_as!(
+        DailyRobot,
+        "SELECT \
+            robots.id, robots.robot_number, robots.prefix, robots.suffix, robots.plural, \
+            robot_groups.tweet_id, robot_groups.content_warning \
+        FROM robots INNER JOIN robot_groups ON robots.group_id = robot_groups.id \
+        WHERE NOT EXISTS (\
+            SELECT 1 FROM past_dailies \
+            WHERE \
+                past_dailies.robot_id = robots.id \
+                AND past_dailies.posted_on >= $1) \
+        ORDER BY random() \
+        LIMIT 1",
+        reuse_cutoff_date
+    )
+    .fetch_one(db_conn)
+    .await
 }
 
-fn cleanup_old_scheduled(db_conn: &PgConnection) -> QueryResult<()> {
-    use diesel::dsl::{now, date, delete};
-    use schema::*;
-
-    delete(scheduled_dailies::table
-            .filter(scheduled_dailies::post_on.lt(date(now))))
-        .execute(db_conn)?;
-
-    Ok(())
+async fn cleanup_old_scheduled(db_conn: &mut PgConnection) -> sqlx::Result<u64> {
+    sqlx::query!(
+        "DELETE FROM scheduled_dailies WHERE post_on < $1",
+        *TODAY_UTC
+    )
+    .execute(db_conn)
+    .await
+    .map(|qr| qr.rows_affected())
 }

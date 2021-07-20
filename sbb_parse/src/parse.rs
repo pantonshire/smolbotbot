@@ -1,43 +1,53 @@
 use std::ops::Range;
+use std::borrow::Cow;
+use std::fmt;
+
 use lazy_static::lazy_static;
 use regex::Regex;
 
-type ParseOut<'a, T> = Option<(&'a str, T)>;
+use crate::robot::{Robot, RobotName};
 
-#[derive(PartialEq, Eq, Clone, Debug)]
-pub struct Robot<'a> {
-    pub number: i32,
-    pub name: RobotName<'a>,
+struct ParseOut<'a, T> {
+    remainder: &'a str,
+    output: T,
 }
 
-#[derive(PartialEq, Eq, Clone, Debug)]
-pub struct RobotName<'a> {
-    pub prefix: &'a str,
-    pub suffix: &'a str,
-    pub plural: Option<&'a str>,
-}
+type OptParseOut<'a, T> = Option<ParseOut<'a, T>>;
 
-impl RobotName<'_> {
-    pub fn identifier(&self) -> String {
-        use unidecode::unidecode;
-
-        lazy_static! {
-            static ref NON_WORD_RE: Regex = Regex::new(r"\W+").unwrap();
-        }
-
-        let ascii = unidecode(self.prefix);
-
-        let mut ident = Regex::new(r"\W+").unwrap()
-            .replace_all(&ascii, "")
-            .to_lowercase();
-
-        ident.retain(|c| !c.is_whitespace());
-
-        ident
+impl<'a, T> fmt::Debug for ParseOut<'a, T> where T: fmt::Debug {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ParseOut")
+            .field("output", &self.output)
+            .field("remainder", &self.remainder)
+            .finish()
     }
 }
 
-pub fn parse_group(text: &str) -> Option<(Vec<Robot>, &str, Option<&str>)> {
+impl<'a, T> PartialEq for ParseOut<'a, T> where T: Eq {
+    fn eq(&self, other: &Self) -> bool {
+        self.output == other.output && self.remainder == other.remainder
+    }
+}
+
+impl<'a, T> Eq for ParseOut<'a, T> where T: Eq {}
+
+impl<'a, T> ParseOut<'a, T> {
+    const fn new(remainder: &'a str, output: T) -> Self {
+        ParseOut {
+            remainder,
+            output,
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct ParsedGroup<'a> {
+    pub robots: Vec<Robot<'a>>,
+    pub body: &'a str,
+    pub cw: Option<&'a str>,
+}
+
+pub fn parse_group(text: &str) -> Option<ParsedGroup> {
     const MAX_GROUP_SIZE: usize = 5;
 
     lazy_static! {
@@ -51,11 +61,14 @@ pub fn parse_group(text: &str) -> Option<(Vec<Robot>, &str, Option<&str>)> {
 
     let s = text.trim();
 
-    let (s, cw) = parse_cw(s)?;
+    let ParseOut { remainder: s, output: cw }
+        = parse_cw(s);
 
-    let (s, n_range) = parse_numbers(s)?;
+    let ParseOut { remainder: s, output: n_range }
+        = parse_numbers(s)?;
 
-    let (s, (names, partial_names)) = parse_names(s, n_range.len().min(MAX_GROUP_SIZE))?;
+    let ParseOut { remainder: s, output: (names, partial_names) }
+        = parse_names(s, n_range.len().min(MAX_GROUP_SIZE))?;
 
     let body = BODY_RE
         .find(s)
@@ -75,36 +88,35 @@ pub fn parse_group(text: &str) -> Option<(Vec<Robot>, &str, Option<&str>)> {
         })
         .collect::<Vec<Robot>>();
 
-    Some((robots, body, cw))
+    Some(ParsedGroup {
+        robots,
+        body,
+        cw,
+    })
 }
 
-pub fn parse_cw(s: &str) -> ParseOut<Option<&str>> {
+fn parse_cw(s: &str) -> ParseOut<Option<&str>> {
     lazy_static! {
         static ref CW_RE: Regex = Regex::new(r"[\[\(][Cc][Nn]:\s*(\S[^\]\)]+)[\]\)]").unwrap();
     }
 
     let captures = match CW_RE.captures(s) {
         Some(cs) => cs,
-        None     => return Some((s, None)),
+        None     => return ParseOut::new(s, None),
     };
 
     let match_end = captures.get(0).unwrap().end();
     let warning_type = captures.get(1).unwrap().as_str().trim();
 
-    Some((s[match_end..].trim_start(), Some(warning_type)))
+    ParseOut::new(s[match_end..].trim_start(), Some(warning_type))
 }
 
-fn parse_numbers(s: &str) -> ParseOut<Range<i32>> {
-    let split_vec = s
-        .splitn(2, ")")
-        .collect::<Vec<&str>>();
+fn parse_numbers(s: &str) -> OptParseOut<Range<i32>> {
+    let (s, rem) = s
+        .split_once(')')?;
 
-    if split_vec.len() < 2 {
-        return None;
-    }
-
-    let s = split_vec[0].trim();
-    let rem = split_vec[1].trim_start();
+    let s = s.trim();
+    let rem = rem.trim_start();
 
     let mut ns = Vec::<i32>::new();
 
@@ -149,7 +161,7 @@ fn parse_numbers(s: &str) -> ParseOut<Range<i32>> {
         ns.push(parse_i32_buf(&buf, neg)?);
     }
 
-    Some((rem, numbers_range(&ns)?))
+    Some(ParseOut::new(rem, numbers_range(&ns)?))
 }
 
 fn numbers_range(ns: &[i32]) -> Option<Range<i32>> {
@@ -193,7 +205,7 @@ fn numbers_range(ns: &[i32]) -> Option<Range<i32>> {
     Some(min_n..max_n+1)
 }
 
-fn parse_names(s: &str, target_n: usize) -> ParseOut<(Vec<RobotName>, bool)> {
+fn parse_names(s: &str, target_n: usize) -> OptParseOut<(Vec<RobotName>, bool)> {
     lazy_static! {
         // Meaning                            | Regex fragment
         // =======================================================================================
@@ -231,9 +243,9 @@ fn parse_names(s: &str, target_n: usize) -> ParseOut<(Vec<RobotName>, bool)> {
         }
 
         names.push(RobotName{
-            prefix: caps.get(1).unwrap().as_str(),
-            suffix: caps.get(2).unwrap().as_str(),
-            plural: caps.get(3).map(|m| m.as_str()),
+            prefix: Cow::Borrowed(caps.get(1).unwrap().as_str()),
+            suffix: Cow::Borrowed(caps.get(2).unwrap().as_str()),
+            plural: caps.get(3).map(|m| Cow::Borrowed(m.as_str())),
         });
 
         let full_match = caps.get(0).unwrap();
@@ -254,20 +266,19 @@ fn parse_names(s: &str, target_n: usize) -> ParseOut<(Vec<RobotName>, bool)> {
         let diff = target_n - names.len();
         let s = &s[..matches_start];
 
-        let first_suffix = names[0].suffix;
-        let first_plural = names[0].plural;
+        let first_suffix = names[0].suffix.clone();
+        let first_plural = names[0].plural.clone();
 
         let partial_names = s
             .split_whitespace()
             .filter(|&w| w.to_lowercase() != "and")
             .map(|w| PARTIAL_BOT_RE.captures(w))
-            .filter(|m| m.is_some())
-            .map(|m| m.unwrap())
+            .flatten()
             .filter(|m| m[1].chars().any(|c| !c.is_ascii_digit()))
             .map(|m| RobotName{
-                prefix: m.get(1).unwrap().as_str(),
-                suffix: first_suffix,
-                plural: first_plural,
+                prefix: Cow::Borrowed(m.get(1).unwrap().as_str()),
+                suffix: first_suffix.clone(),
+                plural: first_plural.clone(),
             });
 
         for (i, name) in partial_names.take(diff).enumerate() {
@@ -275,34 +286,36 @@ fn parse_names(s: &str, target_n: usize) -> ParseOut<(Vec<RobotName>, bool)> {
         }
     }
 
-    Some((&s[matches_end..], (names, use_partial_names)))
+    Some(ParseOut::new(&s[matches_end..], (names, use_partial_names)))
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::parse::RobotName;
+    use super::{ParseOut, ParsedGroup};
+    use crate::robot::RobotName;
 
     #[test]
     fn test_parse_numbers() {
         use super::parse_numbers;
-        assert_eq!(parse_numbers("123)"), Some(("", 123..124)));
-        assert_eq!(parse_numbers("123) Teabot"), Some(("Teabot", 123..124)));
-        assert_eq!(parse_numbers("  123  )  Teabot  "), Some(("Teabot  ", 123..124)));
-        assert_eq!(parse_numbers("-1)"), Some(("", -1..0)));
-        assert_eq!(parse_numbers("1, 2, 3)"), Some(("", 1..4)));
-        assert_eq!(parse_numbers("123-124)"), Some(("", 123..125)));
-        assert_eq!(parse_numbers("123 - 124)"), Some(("", 123..125)));
-        assert_eq!(parse_numbers("123 & 4)"), Some(("", 123..125)));
-        assert_eq!(parse_numbers("123 & 24)"), Some(("", 123..125)));
-        assert_eq!(parse_numbers("124 & 3)"), Some(("", 123..125)));
-        assert_eq!(parse_numbers("8, 7)"), Some(("", 7..9)));
-        assert_eq!(parse_numbers("124-123)"), Some(("", 123..125)));
-        assert_eq!(parse_numbers("1024 - 1048)"), Some(("", 1024..1049)));
-        assert_eq!(parse_numbers("1024, 5 & 6)"), Some(("", 1024..1027)));
-        assert_eq!(parse_numbers("1039, 8 & 40)"), Some(("", 1038..1041)));
+
+        assert_eq!(parse_numbers("123)"), Some(ParseOut::new("", 123..124)));
+        assert_eq!(parse_numbers("123) Teabot"), Some(ParseOut::new("Teabot", 123..124)));
+        assert_eq!(parse_numbers("  123  )  Teabot  "), Some(ParseOut::new("Teabot  ", 123..124)));
+        assert_eq!(parse_numbers("-1)"), Some(ParseOut::new("", -1..0)));
+        assert_eq!(parse_numbers("1, 2, 3)"), Some(ParseOut::new("", 1..4)));
+        assert_eq!(parse_numbers("123-124)"), Some(ParseOut::new("", 123..125)));
+        assert_eq!(parse_numbers("123 - 124)"), Some(ParseOut::new("", 123..125)));
+        assert_eq!(parse_numbers("123 & 4)"), Some(ParseOut::new("", 123..125)));
+        assert_eq!(parse_numbers("123 & 24)"), Some(ParseOut::new("", 123..125)));
+        assert_eq!(parse_numbers("124 & 3)"), Some(ParseOut::new("", 123..125)));
+        assert_eq!(parse_numbers("8, 7)"), Some(ParseOut::new("", 7..9)));
+        assert_eq!(parse_numbers("124-123)"), Some(ParseOut::new("", 123..125)));
+        assert_eq!(parse_numbers("1024 - 1048)"), Some(ParseOut::new("", 1024..1049)));
+        assert_eq!(parse_numbers("1024, 5 & 6)"), Some(ParseOut::new("", 1024..1027)));
+        assert_eq!(parse_numbers("1039, 8 & 40)"), Some(ParseOut::new("", 1038..1041)));
         assert_eq!(parse_numbers("123"), None);
         assert_eq!(parse_numbers("Foo baa"), None);
-        assert_eq!(parse_numbers("2147483646)"), Some(("", 2147483646..2147483647)));
+        assert_eq!(parse_numbers("2147483646)"), Some(ParseOut::new("", 2147483646..2147483647)));
         assert_eq!(parse_numbers("2147483647)"), None);
         assert_eq!(parse_numbers("2147483648)"), None);
         assert_eq!(parse_numbers("Hello)"), None);
@@ -313,21 +326,65 @@ mod tests {
     #[test]
     fn test_parse_names() {
         use super::parse_names;
-        assert_eq!(parse_names("Teabot. Brings you tea", 1), Some((". Brings you tea", (vec![RobotName{ prefix: "Tea", suffix: "bot", plural: None }], false))));
-        assert_eq!(parse_names("Mischiefbots. Oh no!!", 1), Some((". Oh no!!", (vec![RobotName{ prefix: "Mischief", suffix: "bot", plural: Some("s") }], false))));
-        assert_eq!(parse_names("R.O.B.O.T.S.", 1), Some((".", (vec![RobotName{ prefix: "R.O.", suffix: "B.O.T", plural: Some(".S") }], false))));
-        assert_eq!(parse_names("Saltbot and pepperbot.", 1), Some((" and pepperbot.", (vec![RobotName{ prefix: "Salt", suffix: "bot", plural: None }], false))));
-        assert_eq!(parse_names("Saltbot and pepperbot.", 2), Some((".", (vec![RobotName{ prefix: "Salt", suffix: "bot", plural: None }, RobotName{ prefix: "pepper", suffix: "bot", plural: None }], false))));
-        assert_eq!(parse_names("Saltbot and pepperbot.", 3), Some((".", (vec![RobotName{ prefix: "Salt", suffix: "bot", plural: None }, RobotName{ prefix: "pepper", suffix: "bot", plural: None }], false))));
-        assert_eq!(parse_names("Salt- and pepperbots.", 2), Some((".", (vec![RobotName{ prefix: "Salt", suffix: "bot", plural: Some("s") }, RobotName{ prefix: "pepper", suffix: "bot", plural: Some("s") }], true))));
+
+        assert_eq!(
+            parse_names("Teabot. Brings you tea", 1),
+            Some(ParseOut::new(". Brings you tea", (vec![RobotName{ prefix: "Tea".into(), suffix: "bot".into(), plural: None }], false)))
+        );
+        
+        assert_eq!(
+            parse_names("Mischiefbots. Oh no!!", 1),
+            Some(ParseOut::new(". Oh no!!", (vec![RobotName{ prefix: "Mischief".into(), suffix: "bot".into(), plural: Some("s".into()) }], false)))
+        );
+        
+        assert_eq!(
+            parse_names("R.O.B.O.T.S.", 1),
+            Some(ParseOut::new(".", (vec![RobotName{ prefix: "R.O.".into(), suffix: "B.O.T".into(), plural: Some(".S".into()) }], false)))
+        );
+        
+        assert_eq!(
+            parse_names("Saltbot and pepperbot.", 1),
+            Some(ParseOut::new(" and pepperbot.", (vec![RobotName{ prefix: "Salt".into(), suffix: "bot".into(), plural: None }], false)))
+        );
+        
+        assert_eq!(
+            parse_names("Saltbot and pepperbot.", 2),
+            Some(ParseOut::new(".", (vec![RobotName{ prefix: "Salt".into(), suffix: "bot".into(), plural: None }, RobotName{ prefix: "pepper".into(), suffix: "bot".into(), plural: None }], false)))
+        );
+        
+        assert_eq!(
+            parse_names("Saltbot and pepperbot.", 3),
+            Some(ParseOut::new(".", (vec![RobotName{ prefix: "Salt".into(), suffix: "bot".into(), plural: None }, RobotName{ prefix: "pepper".into(), suffix: "bot".into(), plural: None }], false)))
+        );
+        
+        assert_eq!(
+            parse_names("Salt- and pepperbots.", 2),
+            Some(ParseOut::new(".", (vec![RobotName{ prefix: "Salt".into(), suffix: "bot".into(), plural: Some("s".into()) }, RobotName{ prefix: "pepper".into(), suffix: "bot".into(), plural: Some("s".into()) }], true)))
+        );
     }
 
     #[test]
     fn test_parse_group() {
         use super::{parse_group, Robot};
-        assert_eq!(parse_group("1207) Transrightsbot. Is just here to let all its trans pals know that they are valid and they are loved! \u{1f3f3}\u{fe0f}\u{200d}\u{26a7}\u{fe0f}\u{2764}\u{fe0f}\u{1f916}"), Some((vec![Robot { number: 1207, name: RobotName { prefix: "Transrights", suffix: "bot", plural: None } }], "Is just here to let all its trans pals know that they are valid and they are loved! \u{1f3f3}\u{fe0f}\u{200d}\u{26a7}\u{fe0f}\u{2764}\u{fe0f}\u{1f916}", None)));
-        assert_eq!(parse_group("558/9) Salt- and Pepperbots. Bring you salt and pepper."), Some((vec![Robot { number: 558, name: RobotName { prefix: "Salt", suffix: "bot", plural: None } }, Robot { number: 559, name: RobotName { prefix: "Pepper", suffix: "bot", plural: None } }], "Bring you salt and pepper.", None)));
-        assert_eq!(parse_group("690 - 692) Marybot, Josephbot and Donkeybot. For complicated tax reasons, Marybot and Josephbot are forced to temporarily relocate to Bethlehem, just as Marybot recieves a mysterious package from Gabrielbot on behalf of Godbot Labs."), Some((vec![Robot { number: 690, name: RobotName { prefix: "Mary", suffix: "bot", plural: None } }, Robot { number: 691, name: RobotName { prefix: "Joseph", suffix: "bot", plural: None } }, Robot { number: 692, name: RobotName { prefix: "Donkey", suffix: "bot", plural: None } }], "For complicated tax reasons, Marybot and Josephbot are forced to temporarily relocate to Bethlehem, just as Marybot recieves a mysterious package from Gabrielbot on behalf of Godbot Labs.", None)));
-        assert_eq!(parse_group("[CN: sexual assault] 651) Believeherbot. Reminds you to believe the testimony of women survivors of sexual assault; reminds you to look at the gendered power structures in place before you dismiss them as unreliable; reminds you that this is the fucking turning point."), Some((vec![Robot { number: 651, name: RobotName { prefix: "Believeher", suffix: "bot", plural: None } }], "Reminds you to believe the testimony of women survivors of sexual assault; reminds you to look at the gendered power structures in place before you dismiss them as unreliable; reminds you that this is the fucking turning point.", Some("sexual assault"))));
+
+        assert_eq!(
+            parse_group("1207) Transrightsbot. Is just here to let all its trans pals know that they are valid and they are loved! \u{1f3f3}\u{fe0f}\u{200d}\u{26a7}\u{fe0f}\u{2764}\u{fe0f}\u{1f916}"),
+            Some(ParsedGroup { robots: vec![Robot { number: 1207, name: RobotName { prefix: "Transrights".into(), suffix: "bot".into(), plural: None } }], body: "Is just here to let all its trans pals know that they are valid and they are loved! \u{1f3f3}\u{fe0f}\u{200d}\u{26a7}\u{fe0f}\u{2764}\u{fe0f}\u{1f916}", cw: None })
+        );
+        
+        assert_eq!(
+            parse_group("558/9) Salt- and Pepperbots. Bring you salt and pepper."),
+            Some(ParsedGroup { robots: vec![Robot { number: 558, name: RobotName { prefix: "Salt".into(), suffix: "bot".into(), plural: None } }, Robot { number: 559, name: RobotName { prefix: "Pepper".into(), suffix: "bot".into(), plural: None } }], body: "Bring you salt and pepper.", cw: None })
+        );
+        
+        assert_eq!(
+            parse_group("690 - 692) Marybot, Josephbot and Donkeybot. For complicated tax reasons, Marybot and Josephbot are forced to temporarily relocate to Bethlehem, just as Marybot recieves a mysterious package from Gabrielbot on behalf of Godbot Labs."),
+            Some(ParsedGroup { robots: vec![Robot { number: 690, name: RobotName { prefix: "Mary".into(), suffix: "bot".into(), plural: None } }, Robot { number: 691, name: RobotName { prefix: "Joseph".into(), suffix: "bot".into(), plural: None } }, Robot { number: 692, name: RobotName { prefix: "Donkey".into(), suffix: "bot".into(), plural: None } }], body: "For complicated tax reasons, Marybot and Josephbot are forced to temporarily relocate to Bethlehem, just as Marybot recieves a mysterious package from Gabrielbot on behalf of Godbot Labs.", cw: None })
+        );
+        
+        assert_eq!(
+            parse_group("[CN: sexual assault] 651) Believeherbot. Reminds you to believe the testimony of women survivors of sexual assault; reminds you to look at the gendered power structures in place before you dismiss them as unreliable; reminds you that this is the fucking turning point."),
+            Some(ParsedGroup { robots: vec![Robot { number: 651, name: RobotName { prefix: "Believeher".into(), suffix: "bot".into(), plural: None } }], body: "Reminds you to believe the testimony of women survivors of sexual assault; reminds you to look at the gendered power structures in place before you dismiss them as unreliable; reminds you that this is the fucking turning point.", cw: Some("sexual assault") })
+        );
     }
 }
