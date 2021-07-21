@@ -1,12 +1,12 @@
 mod error;
 
-use std::io::{self, Read};
 use std::env;
 use std::path::{PathBuf, Path};
 use std::sync::Arc;
 
 use anyhow::anyhow;
 use clap::{Clap, crate_version, crate_authors, crate_description};
+use tokio::io::AsyncReadExt;
 use tokio::sync::Semaphore;
 use sqlx::postgres::{PgConnection, PgPool};
 use image::{ImageFormat, DynamicImage, GenericImageView, ImageEncoder};
@@ -28,6 +28,17 @@ struct Opts {
     /// If set, generate image thumbnails and store them in this directory
     #[clap(short, long = "thumb")]
     thumb_dir: Option<PathBuf>,
+
+    #[clap(subcommand)]
+    subcommand: Subcommand,
+}
+
+#[derive(Clap)]
+enum Subcommand {
+    /// Read group ids from stdin
+    Ids,
+    /// Get groups without an image in the database
+    Missing,
 }
 
 #[derive(Clone, Debug)]
@@ -48,37 +59,21 @@ struct GroupImagePathOpt {
     image_path: Option<String>,
 }
 
-//TODO: option to get images / thumbs for all robots who currently don't have one
-
 const THUMB_SIZE: u32 = 192;
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     #[cfg(feature = "dotenv")] {
         dotenv::dotenv().ok();
     }
 
     let opts = Opts::parse();
 
-    let group_ids = {
-        let stdin = io::stdin();
-        let mut buffer = String::new();
-        stdin.lock().read_to_string(&mut buffer)?;
-        
-        buffer
-            .split_whitespace()
-            .map(|id| id
-                .parse::<i32>()
-                .map_err(|_| anyhow!("invalid robot group id \"{}\"", id)))
-            .collect::<Result<Vec<_>, _>>()?
-    };
+    // Exit early if the user did not provide any directories
+    if opts.download_dir.is_none() && opts.thumb_dir.is_none() {
+        return Err(anyhow!("no download directory or thumb directory provided, nothing to do"));
+    }
 
-    tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()?
-        .block_on(run(opts, group_ids))
-}
-
-async fn run(opts: Opts, group_ids: Vec<i32>) -> anyhow::Result<()> {
     let db_pool = {
         let db_url = env::var("DATABASE_URL")?;
         PgPool::connect(&db_url).await?
@@ -86,14 +81,21 @@ async fn run(opts: Opts, group_ids: Vec<i32>) -> anyhow::Result<()> {
 
     let mut all_succeeded = true;
 
-    let groups = match opts.download_dir {
+    let group_paths = match opts.download_dir {
         // Download the images and store the paths in the database
         Some(download_dir) => {
             let groups = {
                 let mut db_conn = db_pool.acquire().await?;
-                let groups = get_image_urls(&mut db_conn, &group_ids).await?;
-                drop(group_ids);
-                groups
+
+                match opts.subcommand {
+                    Subcommand::Ids => {
+                        let group_ids = read_stdin_ids().await?;
+                        get_image_urls(&mut db_conn, &group_ids).await?
+                    },
+
+                    Subcommand::Missing =>
+                        get_image_urls_missing(&mut db_conn).await?,
+                }
             };
 
             let http_client = reqwest::Client::new();
@@ -123,8 +125,15 @@ async fn run(opts: Opts, group_ids: Vec<i32>) -> anyhow::Result<()> {
         None => {
             let mut db_conn = db_pool.acquire().await?;
             
-            let opt_groups = get_image_paths(&mut db_conn, &group_ids).await?;
-            drop(group_ids);
+            let opt_groups = match opts.subcommand {
+                Subcommand::Ids => {
+                    let group_ids = read_stdin_ids().await?;
+                    get_image_paths(&mut db_conn, &group_ids).await?
+                }
+
+                Subcommand::Missing =>
+                    get_image_paths_missing(&mut db_conn).await?,
+            };
 
             let mut groups = Vec::new();
             for opt_group in opt_groups {
@@ -149,7 +158,7 @@ async fn run(opts: Opts, group_ids: Vec<i32>) -> anyhow::Result<()> {
     if let Some(thumb_dir) = opts.thumb_dir {
         let thumb_results = gen_thumbs(
             &db_pool,
-            groups,
+            group_paths,
             &thumb_dir,
             THUMB_SIZE
         ).await;
@@ -170,6 +179,22 @@ async fn run(opts: Opts, group_ids: Vec<i32>) -> anyhow::Result<()> {
     }
 }
 
+/// Reads a list of robot group ids from stdin.
+async fn read_stdin_ids() -> anyhow::Result<Vec<i32>> {
+    let mut buffer = String::new();
+    tokio::io::stdin()
+        .read_to_string(&mut buffer)
+        .await?;
+    
+    buffer
+        .split_whitespace()
+        .map(|id| id
+            .parse::<i32>()
+            .map_err(|_| anyhow!("invalid robot group id \"{}\"", id)))
+        .collect::<Result<Vec<_>, _>>()
+}
+
+/// Get the image urls of all of the robot groups with the given ids.
 async fn get_image_urls(
     db_conn: &mut PgConnection,
     group_ids: &[i32]
@@ -185,6 +210,18 @@ async fn get_image_urls(
     .await
 }
 
+/// Get the image urls of all of the robot groups which have no image path in the database.
+async fn get_image_urls_missing(db_conn: &mut PgConnection) -> sqlx::Result<Vec<GroupImageUrl>> {
+    sqlx::query_as!(
+        GroupImageUrl,
+        "SELECT id, image_url FROM robot_groups \
+        WHERE image_path IS NULL",
+    )
+    .fetch_all(db_conn)
+    .await
+}
+
+/// Get the image paths of all of the robot groups with the given ids.
 async fn get_image_paths(
     db_conn: &mut PgConnection,
     group_ids: &[i32]
@@ -193,9 +230,19 @@ async fn get_image_paths(
     sqlx::query_as!(
         GroupImagePathOpt,
         "SELECT id, image_path FROM robot_groups \
-        WHERE id = ANY($1) \
-        AND image_path IS NOT NULL",
+        WHERE id = ANY($1)",
         group_ids
+    )
+    .fetch_all(db_conn)
+    .await
+}
+
+/// Get the image paths of all of the robot groups which have no image thumb path in the database.
+async fn get_image_paths_missing(db_conn: &mut PgConnection) -> sqlx::Result<Vec<GroupImagePathOpt>> {
+    sqlx::query_as!(
+        GroupImagePathOpt,
+        "SELECT id, image_path FROM robot_groups \
+        WHERE image_thumb_path IS NULL",
     )
     .fetch_all(db_conn)
     .await
