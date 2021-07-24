@@ -20,7 +20,6 @@ pub(crate) enum ImgErrorCause {
     TaskPanicked(Box<tokio::task::JoinError>),
     InvalidUrl(Box<url::ParseError>),
     HttpError(StatusCode),
-    InvalidPath,
     NoRowsUpdated,
 }
 
@@ -50,7 +49,6 @@ impl fmt::Display for ImgErrorCause {
             Self::TaskPanicked(err) => err.fmt(f),
             Self::InvalidUrl(err) => err.fmt(f),
             Self::HttpError(status) => status.fmt(f),
-            Self::InvalidPath => write!(f, "path is not valid utf8"),
             Self::NoRowsUpdated => write!(f, "no rows affected by update"),
         }
     }
