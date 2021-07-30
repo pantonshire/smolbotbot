@@ -3,6 +3,7 @@ mod error;
 use std::env;
 use std::path::{PathBuf, Path};
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::anyhow;
 use clap::{Clap, crate_version, crate_authors, crate_description};
@@ -104,7 +105,10 @@ async fn main() -> anyhow::Result<()> {
                 }
             };
 
-            let http_client = reqwest::Client::new();
+            let http_client = reqwest::ClientBuilder::new()
+                .connect_timeout(Duration::from_secs(30))
+                .timeout(Duration::from_secs(300))
+                .build()?;
 
             let image_results = get_images(
                 &db_pool,
