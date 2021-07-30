@@ -30,6 +30,14 @@ struct Opts {
     #[clap(short, long = "thumb")]
     thumb: bool,
 
+    /// The timeout in seconds for connecting to the image server. If not set, there is no timeout.
+    #[clap(long)]
+    connect_timeout: Option<u64>,
+
+    /// The timeout in seconds for a request to complete. If not set, there is no timeout.
+    #[clap(long)]
+    request_timeout: Option<u64>,
+
     /// If set, use the this directory for storing / retrieving images instead of the current working
     /// directory
     dir: Option<PathBuf>,
@@ -105,10 +113,16 @@ async fn main() -> anyhow::Result<()> {
                 }
             };
 
-            let http_client = reqwest::ClientBuilder::new()
-                .connect_timeout(Duration::from_secs(30))
-                .timeout(Duration::from_secs(300))
-                .build()?;
+            let http_client = {
+                let mut builder = reqwest::ClientBuilder::new();
+                if let Some(connect_timeout) = opts.connect_timeout {
+                    builder = builder.connect_timeout(Duration::from_secs(connect_timeout));
+                }
+                if let Some(request_timeout) = opts.request_timeout {
+                    builder = builder.timeout(Duration::from_secs(request_timeout));
+                }
+                builder.build()?
+            };
 
             let image_results = get_images(
                 &db_pool,
