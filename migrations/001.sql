@@ -26,7 +26,7 @@ CREATE TABLE robots (
     UNIQUE (ident, robot_number)
 );
 
-CREATE INDEX ix_robots_robot_number ON robots USING btree (robot_number);
+CREATE INDEX ix_robots_robot_number_id ON robots USING btree (robot_number, id);
 
 CREATE TABLE past_dailies (
     id         SERIAL4 PRIMARY KEY,
