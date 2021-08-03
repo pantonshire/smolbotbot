@@ -84,7 +84,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Exit early if the user did not provide any directories
     if !opts.download && !opts.thumb {
-        return Err(anyhow!("no download directory or thumb directory provided, nothing to do"));
+        return Err(anyhow!("neither -d nor -t flags provided, nothing to do"));
     }
 
     let dir = opts.dir.map(Arc::new);
