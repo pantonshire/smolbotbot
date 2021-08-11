@@ -1,0 +1,38 @@
+version: "3.9"
+
+volumes:
+  db_data:
+
+services:
+  database:
+    build: ./database
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "${DATABASE_PASSWORD}"
+      POSTGRES_USER: sbb
+      POSTGRES_DB: sbb
+
+  goldcrest:
+    image: pantonshire/goldcrest:latest
+    restart: unless-stopped
+    # TODO: config
+
+  sbb:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://sbb:${DATABASE_PASSWORD}@database/sbb"
+      GOLDCREST_HOST: goldcrest
+      GOLDCREST_PORT: 80
+      GOLDCREST_REQUEST_TIMEOUT: 30
+      GOLDCREST_WAIT_TIMEOUT: 1200
+      TWITTER_CONSUMER_KEY: "${TWITTER_CONSUMER_KEY}"
+      TWITTER_CONSUMER_SECRET: "${TWITTER_CONSUMER_SECRET}"
+      TWITTER_TOKEN: "${TWITTER_TOKEN}"
+      TWITTER_TOKEN_SECRET: "${TWITTER_TOKEN_SECRET}"
+
+  # TODO: archive
