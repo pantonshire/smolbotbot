@@ -1,0 +1,13 @@
+database:
+  url: 'postgres://user:password@localhost/database'
+
+goldcrest:
+  host: localhost
+  port: 7400
+  request_timeout_seconds: 30
+  wait_timeout_seconds: 1200
+  auth:
+    consumer_key:
+    consumer_secret:
+    token:
+    token_secret:
