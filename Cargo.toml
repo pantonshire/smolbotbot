@@ -21,8 +21,13 @@ regex = "1"
 unidecode = "0.3"
 anyhow = "1"
 clap = "3.0.0-beta.2"
-fastrand = "1.4"
+rand = "0.8"
 serde = "1.0"
 serde_yaml = "0.8"
+reqwest = { version = "0.11", features = ["rustls-tls"], default-features = false }
+governor = "0.3"
+image = { version = "0.23", features = ["jpeg", "png"], default-features = false }
+url = "2"
+nonzero_ext = "0.2"
 dotenv = { version = "0.15", optional = true }
 

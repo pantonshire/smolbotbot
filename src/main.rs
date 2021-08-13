@@ -1,6 +1,9 @@
 mod parse;
 mod fetch;
 mod export;
+mod timeline;
+mod images;
+mod post;
 mod scribe;
 mod model;
 mod error;
@@ -39,6 +42,15 @@ enum MainCommand {
 
     /// Output a list of stored Tweet ids.
     Export(export::Opts),
+
+    /// Read a user's timeline, searching for new robot Tweets.
+    Timeline(timeline::Opts),
+
+    /// Download robot images and/or generate thumbnails
+    Image(images::Opts),
+
+    /// Post a new Tweet.
+    Post(post::Opts),
 }
 
 #[derive(Deserialize, Default)]
@@ -137,6 +149,29 @@ async fn run(opts: Opts, config: Config) -> anyhow::Result<()> {
         MainCommand::Export(opts) => {
             let db_pool = connect_db(config.database.unwrap_or_default()).await?;
             let res = export::run(&db_pool, opts).await;
+            db_pool.close().await;
+            res
+        },
+
+        MainCommand::Timeline(opts) => {
+            let db_pool = connect_db(config.database.unwrap_or_default()).await?;
+            let au_client = connect_goldcrest(config.goldcrest.unwrap_or_default()).await?;
+            let res = timeline::run(&db_pool, &au_client, opts).await;
+            db_pool.close().await;
+            res
+        },
+
+        MainCommand::Image(opts) => {
+            let db_pool = connect_db(config.database.unwrap_or_default()).await?;
+            let res = images::run(&db_pool, opts).await;
+            db_pool.close().await;
+            res
+        },
+
+        MainCommand::Post(opts) => {
+            let db_pool = connect_db(config.database.unwrap_or_default()).await?;
+            let au_client = connect_goldcrest(config.goldcrest.unwrap_or_default()).await?;
+            let res = post::run(&db_pool, &au_client, opts).await;
             db_pool.close().await;
             res
         },

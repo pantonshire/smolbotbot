@@ -26,7 +26,12 @@ pub(crate) struct Opts {
     file: Option<PathBuf>,
 }
 
-pub(crate) async fn run(db_pool: &PgPool, au_client: Arc<goldcrest::Client>, opts: Opts) -> anyhow::Result<()> {
+pub(crate) async fn run(
+    db_pool: &PgPool,
+    au_client: Arc<goldcrest::Client>,
+    opts: Opts
+) -> anyhow::Result<()>
+{
     let input_tweet_ids = {
         let input = match opts.file {
             Some(input_path) =>
@@ -44,30 +49,29 @@ pub(crate) async fn run(db_pool: &PgPool, au_client: Arc<goldcrest::Client>, opt
             },
         };
 
-        input
+        let mut tweet_ids = input
             .split_ascii_whitespace()
             .map(|id| id.parse()
                 .with_context(|| format!(r#"invalid tweet id "{}""#, id)))
-            .collect::<anyhow::Result<Vec<i64>>>()?
-    };
+            .collect::<anyhow::Result<Vec<i64>>>()?;
 
-    let tweet_ids = {
-        let mut tweet_ids = sqlx::query_as::<_, model::TweetId>(
-            "SELECT tweet_id FROM UNNEST($1) as tweet_ids(tweet_id) \
-            WHERE tweet_id NOT IN (SELECT tweet_id FROM robots)"
-        )
-        .bind(input_tweet_ids)
-        .fetch_all(db_pool)
-        .await
-        .context("failed to check for existing tweet ids")?
-        .into_iter()
-        .map(|row| row.tweet_id as u64)
-        .collect::<Vec<_>>();
-    
         tweet_ids.sort_unstable();
         tweet_ids.dedup();
         tweet_ids
     };
+
+    // Only use tweet ids that are not already in the database
+    let tweet_ids = sqlx::query_as::<_, model::TweetId>(
+        "SELECT tweet_id FROM UNNEST($1) as tweet_ids(tweet_id) \
+        WHERE tweet_id NOT IN (SELECT tweet_id FROM robots)"
+    )
+    .bind(input_tweet_ids)
+    .fetch_all(db_pool)
+    .await
+    .context("failed to check for existing tweet ids")?
+    .into_iter()
+    .map(|row| row.tweet_id as u64)
+    .collect::<Vec<_>>();
 
     let robot_ids = match opts.batch_size {
         Some(batch_size) => batched_fetch_and_scribe(au_client, db_pool, &tweet_ids, batch_size, opts.verbose).await,
