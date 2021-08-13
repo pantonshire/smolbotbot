@@ -9,8 +9,10 @@ RUN cargo build --release --no-default-features
 FROM alpine:latest as runtime
 COPY --from=build /app/target/release/smolbotbot /usr/local/bin/sbb
 WORKDIR /sbb/
+RUN mkdir -p /var/lib/smolbotbot/images
 COPY docker/runtime/entry.sh ./
 
 # Temporary
 COPY tweet_ids ./
-ENTRYPOINT ["/usr/local/bin/sbb", "fetch", "tweet_ids"]
+
+ENTRYPOINT ["/bin/sh", "entry.sh"]

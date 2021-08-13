@@ -2,6 +2,7 @@ version: "3.9"
 
 volumes:
   db_data:
+  robot_images:
 
 services:
   database:
@@ -23,7 +24,9 @@ services:
 
   sbb:
     build: .
-    restart: unless-stopped
+    # restart: unless-stopped
+    volumes:
+      - robot_images:/var/lib/smolbotbot/images
     environment:
       DATABASE_URL: "postgres://sbb:${DATABASE_PASSWORD}@database/sbb"
       GOLDCREST_HOST: goldcrest
@@ -35,4 +38,12 @@ services:
       TWITTER_TOKEN: "${TWITTER_TOKEN}"
       TWITTER_TOKEN_SECRET: "${TWITTER_TOKEN_SECRET}"
 
-  # TODO: archive
+  archive:
+    build: https://github.com/Pantonshire/small_robots_archive.git#main
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:8080:80
+    volumes:
+      - robot_images:/srv/www/generated/robot_images
+    environment:
+      DATABASE_URL: "postgres://sbb:${DATABASE_PASSWORD}@database/sbb"
