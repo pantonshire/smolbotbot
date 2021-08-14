@@ -1,28 +1,17 @@
 # Smolbotbot
 
-![Latest release](https://img.shields.io/github/v/release/pantonshire/smolbotbot)
+[![Latest release](https://img.shields.io/github/v/release/pantonshire/smolbotbot)](https://github.com/Pantonshire/SmolBotBot/releases/latest)
 
-A Twitter chatbot for looking up [Small Robots](https://twitter.com/smolrobots) robots.  
-This repository also includes the (now deprecated) API for accessing the data collected by the bot.
+A Twitter bot for looking up [Small Robots](https://twitter.com/smolrobots) robots.  
+Running at [@smolbotbot](https://twitter.com/smolbotbot) on Twitter! 🤖
 
-The bot is written in Rust and the API is written in Go.
+## Installing with Docker
+1. Run `git clone git@github.com:Pantonshire/SmolBotBot.git` to clone this repository
+2. Create a `.env` file, setting the following environment variables:
+    - `DATABASE_PASSWORD`: the password to use for the new PostgreSQL instance
+    - `TWITTER_CONSUMER_KEY`, `TWITTER_CONSUMER_SECRET`, `TWITTER_TOKEN` and `TWITTER_TOKEN_SECRET`: the [OAuth credentials](https://developer.twitter.com/en/docs/authentication/oauth-1-0a) for the Twitter API
+    - `SBB_TIMELINE`: set to `true` if you want to periodically search the Twitter timeline for new robots
+    - `SBB_DAILY`: set to `true` if you want to post a "robot of the day" Tweet every day
+3. Run `docker-compose up`
 
-## Overview
-- On Twitter, mention [@smolbotbot](https://twitter.com/smolbotbot) in a tweet or send a direct message with some search terms for the small robot you're looking for. The bot will find the best matches (up to 4) and return links to each of the original tweets.
-- If you don't know which small robot you want, type "random" and the bot will choose for you!
-- Every day at 07:00 GMT, the bot will tweet a different "small robot of the day".
-- The bot stores data about all of the existing small robots, checking for new robots each hour and updating the file when new ones are found. Tags are automatically generated for each robot, which are used for searching.
-- If you don't want the bot to reply to a tweet you've mentioned it in, type (ignore) in parentheses.
-- Try thanking the bot for its hard work!
-
-## Contibuting
-If you want to make a contribution, feel free to submit a pull request.
-
-## Installing
-(TODO)
-
-## Changelog
-[The changelog can be found here](https://github.com/Pantonshire/SmolBotBot/blob/main/changelog.md#changelog). I try to update it whenever I add or change something, but it may sometimes be a bit behind!
-
-## Dependencies
-(TODO)
+The Docker Compose application contains both Smolbotbot and the [Small Robots Archive](https://github.com/Pantonshire/small_robots_archive).
