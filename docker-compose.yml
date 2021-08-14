@@ -24,7 +24,7 @@ services:
 
   sbb:
     build: .
-    # restart: unless-stopped
+    restart: unless-stopped
     volumes:
       - robot_ids:/var/lib/smolbotbot/bootstrap
       - robot_images:/var/lib/smolbotbot/images
