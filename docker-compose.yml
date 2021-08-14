@@ -1,0 +1,56 @@
+version: "3.9"
+
+volumes:
+  db_data:
+  robot_ids:
+  robot_images:
+
+services:
+  database:
+    build: ./database
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DATABASE_PORT}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "${DATABASE_PASSWORD}"
+      POSTGRES_USER: sbb
+      POSTGRES_DB: sbb
+
+  goldcrest:
+    image: pantonshire/goldcrest:latest
+    restart: unless-stopped
+
+  sbb:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - robot_ids:/var/lib/smolbotbot/bootstrap
+      - robot_images:/var/lib/smolbotbot/images
+    environment:
+      DATABASE_URL: "postgres://sbb:${DATABASE_PASSWORD}@database/sbb"
+      GOLDCREST_HOST: goldcrest
+      GOLDCREST_PORT: 80
+      GOLDCREST_REQUEST_TIMEOUT: 30
+      GOLDCREST_WAIT_TIMEOUT: 1200
+      TWITTER_CONSUMER_KEY: "${TWITTER_CONSUMER_KEY}"
+      TWITTER_CONSUMER_SECRET: "${TWITTER_CONSUMER_SECRET}"
+      TWITTER_TOKEN: "${TWITTER_TOKEN}"
+      TWITTER_TOKEN_SECRET: "${TWITTER_TOKEN_SECRET}"
+      SBB_TIMELINE: "${SBB_TIMELINE}"
+      SBB_DAILY: "${SBB_DAILY}"
+      SBB_SAVEIDS: "${SBB_SAVEIDS}"
+      SBB_BOOTSTRAP_IDS: "${SBB_BOOTSTRAP_IDS}"
+      SBB_BOOTSTRAP_URL: "${SBB_BOOTSTRAP_URL}"
+
+  archive:
+    build: https://github.com/Pantonshire/small_robots_archive.git#main
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:${ARCHIVE_PORT}"
+    volumes:
+      - robot_ids:/srv/www/generated/bootstrap
+      - robot_images:/srv/www/generated/robot_images
+    environment:
+      DATABASE_URL: "postgres://sbb:${DATABASE_PASSWORD}@database/sbb"

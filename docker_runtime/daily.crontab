@@ -1,0 +1,1 @@
+0 7 * * * /bin/sh /sbb/daily.sh

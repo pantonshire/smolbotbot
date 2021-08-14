@@ -1,9 +1,33 @@
-[workspace]
-members = [
-  "services",
-  "sbb_parse",
-  "sbb_scribe",
-  "sbb_botd",
-  "sbb_census",
-  "sbb_img"
-]
+[package]
+name = "smolbotbot"
+version = "0.1.0"
+authors = ["Tom Panton <pantonshire@gmail.com>"]
+edition = "2018"
+license = "MIT"
+description = "Smolbotbot Twitter Bot"
+
+[features]
+default = ["dotenv", "default-config-file", "tonic-rustfmt"]
+default-config-file = []
+tonic-rustfmt = ["goldcrest/tonic-rustfmt"]
+
+[dependencies]
+goldcrest = { git = "https://github.com/Pantonshire/goldcrest", branch = "main", default-features = false }
+tokio = { version = "1", features = ["full"] }
+sqlx = { version = "0.5", features = [ "runtime-tokio-rustls", "postgres", "chrono" ] }
+chrono = "0.4"
+lazy_static = "1"
+regex = "1"
+unidecode = "0.3"
+anyhow = "1"
+clap = "3.0.0-beta.2"
+rand = "0.8"
+serde = "1.0"
+serde_yaml = "0.8"
+reqwest = { version = "0.11", features = ["rustls-tls"], default-features = false }
+governor = "0.3"
+image = { version = "0.23", features = ["jpeg", "png"], default-features = false }
+url = "2"
+nonzero_ext = "0.2"
+dotenv = { version = "0.15", optional = true }
+

@@ -4,7 +4,7 @@
 .vscode
 
 .env
-services.yaml
+smolbotbot.yaml
 
 target/
 experiment/
