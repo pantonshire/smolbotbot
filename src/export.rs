@@ -17,8 +17,6 @@ pub(crate) struct Opts {
     file: Option<PathBuf>,
 }
 
-//TODO: test this with flamegraph
-
 pub(crate) async fn run(db_pool: &PgPool, opts: Opts) -> anyhow::Result<()> {
     let ids = fetch_ids(&db_pool).await?;
 
