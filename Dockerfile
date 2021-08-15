@@ -2,17 +2,20 @@ FROM rust:1.54-alpine as build
 WORKDIR /app/
 COPY Cargo.toml Cargo.lock ./
 COPY src/ ./src/
-RUN apk update
-RUN apk add --no-cache musl-dev protoc
+RUN apk update \
+    && apk add --no-cache musl-dev protoc
 RUN cargo build --release --no-default-features
 
 FROM alpine:latest as runtime
 COPY --from=build /app/target/release/smolbotbot /usr/local/bin/sbb
 WORKDIR /sbb/
-RUN mkdir -p /var/lib/smolbotbot/images
-RUN mkdir -p /var/lib/smolbotbot/bootstrap
 COPY docker_runtime/ ./
-RUN chmod 0500 *.sh
-RUN apk update
-RUN apk add --no-cache curl
-ENTRYPOINT ["/bin/sh", "entry.sh"]
+RUN chmod 0555 *.sh
+ENV USER_ID=12000 GROUP_ID=12000
+RUN addgroup -S -g "$GROUP_ID" sbb \
+    && adduser -SDH -u "$USER_ID" -g sbb sbb
+RUN mkdir -p /var/lib/smolbotbot \
+    && chown sbb:sbb /var/lib/smolbotbot
+USER sbb
+ENTRYPOINT ["/bin/sh"]
+CMD ["timeline.sh"]

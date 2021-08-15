@@ -9,3 +9,6 @@ smolbotbot.yaml
 target/
 experiment/
 robot_images/
+sbb_db_data/
+sbb_robot_images/
+sbb_robot_ids/

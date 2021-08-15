@@ -1,10 +1,5 @@
 version: "3.9"
 
-volumes:
-  db_data:
-  robot_ids:
-  robot_images:
-
 services:
   database:
     build: ./database
@@ -12,7 +7,7 @@ services:
     ports:
       - "127.0.0.1:${DATABASE_PORT}:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - ./sbb_db_data:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: "${DATABASE_PASSWORD}"
       POSTGRES_USER: sbb
@@ -20,37 +15,41 @@ services:
 
   goldcrest:
     image: pantonshire/goldcrest:latest
+    read_only: true
     restart: unless-stopped
 
   sbb:
     build: .
-    restart: unless-stopped
+    restart: "no"
+    profiles:
+      - bot
+    depends_on: 
+      - database
+      - goldcrest
     volumes:
-      - robot_ids:/var/lib/smolbotbot/bootstrap
-      - robot_images:/var/lib/smolbotbot/images
+      - ./sbb_robot_ids:/var/lib/smolbotbot/bootstrap
+      - ./sbb_robot_images:/var/lib/smolbotbot/images
     environment:
       DATABASE_URL: "postgres://sbb:${DATABASE_PASSWORD}@database/sbb"
       GOLDCREST_HOST: goldcrest
-      GOLDCREST_PORT: 80
+      GOLDCREST_PORT: 8080
       GOLDCREST_REQUEST_TIMEOUT: 30
       GOLDCREST_WAIT_TIMEOUT: 1200
       TWITTER_CONSUMER_KEY: "${TWITTER_CONSUMER_KEY}"
       TWITTER_CONSUMER_SECRET: "${TWITTER_CONSUMER_SECRET}"
       TWITTER_TOKEN: "${TWITTER_TOKEN}"
       TWITTER_TOKEN_SECRET: "${TWITTER_TOKEN_SECRET}"
-      SBB_TIMELINE: "${SBB_TIMELINE}"
-      SBB_DAILY: "${SBB_DAILY}"
-      SBB_SAVEIDS: "${SBB_SAVEIDS}"
-      SBB_BOOTSTRAP_IDS: "${SBB_BOOTSTRAP_IDS}"
-      SBB_BOOTSTRAP_URL: "${SBB_BOOTSTRAP_URL}"
 
   archive:
     build: https://github.com/Pantonshire/small_robots_archive.git#main
+    read_only: true
     restart: unless-stopped
+    depends_on:
+      - database
     ports:
-      - "127.0.0.1:8080:${ARCHIVE_PORT}"
+      - 127.0.0.1:8080:8080
     volumes:
-      - robot_ids:/srv/www/generated/bootstrap
-      - robot_images:/srv/www/generated/robot_images
+      - ./sbb_robot_ids:/srv/www/generated/bootstrap
+      - ./sbb_robot_images:/srv/www/generated/robot_images
     environment:
       DATABASE_URL: "postgres://sbb:${DATABASE_PASSWORD}@database/sbb"
