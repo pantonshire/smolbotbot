@@ -14,8 +14,11 @@ RUN chmod 0555 *.sh
 ENV USER_ID=12000 GROUP_ID=12000
 RUN addgroup -S -g "$GROUP_ID" sbb \
     && adduser -SDH -u "$USER_ID" -g sbb sbb
-RUN mkdir -p /var/lib/smolbotbot \
-    && chown sbb:sbb /var/lib/smolbotbot
+RUN mkdir -p /var/lib/smolbotbot/bootstrap \
+    && mkdir -p /var/lib/smolbotbot/images \
+    && chown -R sbb:sbb /var/lib/smolbotbot/bootstrap \
+    && chown -R sbb:sbb /var/lib/smolbotbot/images
+VOLUME /var/lib/smolbotbot/bootstrap /var/lib/smolbotbot/images
 USER sbb
 ENTRYPOINT ["/bin/sh"]
 CMD ["timeline.sh"]
