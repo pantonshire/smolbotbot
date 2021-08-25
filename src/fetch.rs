@@ -37,7 +37,7 @@ pub(crate) async fn run(
             Some(input_path) =>
                 tokio::fs::read_to_string(&input_path)
                     .await
-                    .with_context(|| format!("error reading input file {}", input_path.to_string_lossy()))?,
+                    .with_context(|| format!("failed to read input file {}", input_path.to_string_lossy()))?,
     
             None => {
                 let mut buf = String::new();

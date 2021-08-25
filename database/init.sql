@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS robots (
     body              TEXT NOT NULL,
     alt               TEXT,
     content_warning   TEXT,
-    tags              TEXT ARRAY,
     custom_alt        TEXT,
     image_path        TEXT,
     image_thumb_path  TEXT,
@@ -21,7 +20,7 @@ CREATE TABLE IF NOT EXISTS robots (
 
 CREATE INDEX IF NOT EXISTS ix_robots_robot_number_id ON robots USING btree (robot_number, id);
 CREATE INDEX IF NOT EXISTS ix_robots_tweet_id ON robots USING btree (tweet_id);
-CREATE INDEX IF NOT EXISTS ix_robots_tags ON robots USING gin (tags);
+CREATE INDEX IF NOT EXISTS ix_robots_tweet_time ON robots USING btree (tweet_time);
 
 CREATE TABLE IF NOT EXISTS past_dailies (
     id         SERIAL4 PRIMARY KEY,

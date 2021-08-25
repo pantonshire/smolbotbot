@@ -2,7 +2,7 @@ version: "3.9"
 
 volumes:
   db_data:
-  robot_ids:
+  robot_bootstrap:
   robot_images:
 
 services:
@@ -32,7 +32,7 @@ services:
       - database
       - goldcrest
     volumes:
-      - robot_ids:/var/lib/smolbotbot/bootstrap
+      - robot_bootstrap:/var/lib/smolbotbot/bootstrap
       - robot_images:/var/lib/smolbotbot/images
     environment:
       DATABASE_URL: "postgres://sbb:${DATABASE_PASSWORD}@database/sbb"
@@ -54,7 +54,7 @@ services:
     ports:
       - 127.0.0.1:8080:8080
     volumes:
-      - robot_ids:/srv/www/generated/bootstrap
+      - robot_bootstrap:/srv/www/generated/bootstrap
       - robot_images:/srv/www/generated/robot_images
     environment:
       DATABASE_URL: "postgres://sbb:${DATABASE_PASSWORD}@database/sbb"

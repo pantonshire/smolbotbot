@@ -4,6 +4,7 @@ mod export;
 mod timeline;
 mod images;
 mod post;
+mod alt;
 mod scribe;
 mod model;
 mod error;
@@ -46,11 +47,14 @@ enum MainCommand {
     /// Read a user's timeline, searching for new robot Tweets.
     Timeline(timeline::Opts),
 
-    /// Download robot images and/or generate thumbnails
+    /// Download robot images and/or generate thumbnails.
     Image(images::Opts),
 
     /// Post a new Tweet.
     Post(post::Opts),
+
+    /// Import or export custom alt text.
+    Alt(alt::Opts),
 }
 
 #[derive(Deserialize, Default)]
@@ -172,6 +176,13 @@ async fn run(opts: Opts, config: Config) -> anyhow::Result<()> {
             let db_pool = connect_db(config.database.unwrap_or_default()).await?;
             let au_client = connect_goldcrest(config.goldcrest.unwrap_or_default()).await?;
             let res = post::run(&db_pool, &au_client, opts).await;
+            db_pool.close().await;
+            res
+        },
+
+        MainCommand::Alt(opts) => {
+            let db_pool = connect_db(config.database.unwrap_or_default()).await?;
+            let res = alt::run(&db_pool, opts).await;
             db_pool.close().await;
             res
         },

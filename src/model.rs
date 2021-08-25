@@ -61,3 +61,10 @@ pub(crate) struct RobotImagePathOpt {
     pub(crate) id: i32,
     pub(crate) image_path: Option<String>,
 }
+
+#[derive(FromRow, Clone, Debug)]
+pub(crate) struct RobotCustomAltExport {
+    pub(crate) robot_number: i32,
+    pub(crate) ident: String,
+    pub(crate) custom_alt: String,
+}
