@@ -28,7 +28,7 @@ services:
     restart: "no"
     profiles:
       - bot
-    depends_on: 
+    depends_on:
       - database
       - goldcrest
     volumes:
@@ -46,7 +46,7 @@ services:
       TWITTER_TOKEN_SECRET: "${TWITTER_TOKEN_SECRET}"
 
   archive:
-    build: https://github.com/Pantonshire/small_robots_archive.git#main
+    build: ./archive
     read_only: true
     restart: unless-stopped
     depends_on:
