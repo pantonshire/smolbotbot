@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TABLE IF NOT EXISTS robots (
     id                SERIAL4 PRIMARY KEY,
     robot_number      INT4 NOT NULL,
@@ -14,6 +16,10 @@ CREATE TABLE IF NOT EXISTS robots (
     custom_alt        TEXT,
     image_path        TEXT,
     image_thumb_path  TEXT,
+    ts                tsvector GENERATED ALWAYS AS (
+                        setweight(to_tsvector('english', body), 'A')
+                        || setweight(to_tsvector('english', coalesce(custom_alt, alt, '')), 'B')
+                      ) STORED
     
     UNIQUE (ident, robot_number)
 );
@@ -21,6 +27,8 @@ CREATE TABLE IF NOT EXISTS robots (
 CREATE INDEX IF NOT EXISTS ix_robots_robot_number_id ON robots USING btree (robot_number, id);
 CREATE INDEX IF NOT EXISTS ix_robots_tweet_id ON robots USING btree (tweet_id);
 CREATE INDEX IF NOT EXISTS ix_robots_tweet_time ON robots USING btree (tweet_time);
+CREATE INDEX IF NOT EXISTS ix_robots_ts ON robots USING gin (ts);
+CREATE INDEX IF NOT EXISTS ix_robots_ident_trgm ON robots USING gin (ident gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS past_dailies (
     id         SERIAL4 PRIMARY KEY,
