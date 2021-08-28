@@ -53,20 +53,10 @@ pub struct ParsedGroup<'a> {
 }
 
 impl RobotName<'_> {
-    /// Converts the robot's prefix from UTF-8 to ASCII and removes all non-word characters.
+    /// Converts the robot's prefix from UTF-8 to ASCII and removes all non-alphanumeric characters.
     pub fn identifier(&self) -> String {
-        lazy_static! {
-            static ref NON_WORD_RE: Regex = Regex::new(r"\W+").unwrap();
-        }
-
-        let ascii = unidecode(&self.prefix);
-
-        let mut ident = NON_WORD_RE
-            .replace_all(&ascii, "")
-            .to_lowercase();
-
-        ident.retain(|c| !c.is_whitespace());
-
+        let mut ident = unidecode(&self.prefix).to_lowercase();
+        ident.retain(|c| c.is_ascii_alphanumeric());
         ident
     }
 }
