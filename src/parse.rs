@@ -98,10 +98,11 @@ pub fn parse_group(text: &str) -> Option<ParsedGroup> {
     lazy_static! {
         // Meaning                             | Regex fragment
         // =====================================================
-        // Word character                      | \w
-        // Zero or more of any character       |   .*
-        // End of string                       |     $
-        static ref BODY_RE: Regex = Regex::new(r"\w.*$").unwrap();
+        // Allow . to match newlines           | (?s)
+        // Word character                      |     \w
+        // Zero or more of any character       |       .*
+        // End of string                       |         $
+        static ref BODY_RE: Regex = Regex::new(r"(?s)\w.*$").unwrap();
     }
 
     let s = text.trim();
