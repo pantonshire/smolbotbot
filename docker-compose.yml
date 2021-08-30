@@ -58,3 +58,5 @@ services:
       - robot_images:/srv/www/generated/robot_images
     environment:
       DATABASE_URL: "postgres://sbb:${DATABASE_PASSWORD}@database/sbb"
+      RUST_LOG: sbb_archive=debug
+
