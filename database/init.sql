@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS robots (
     ts                tsvector GENERATED ALWAYS AS (
                         setweight(to_tsvector('english', body), 'A')
                         || setweight(to_tsvector('english', coalesce(custom_alt, alt, '')), 'B')
-                      ) STORED
+                      ) STORED,
     
     UNIQUE (ident, robot_number)
 );
