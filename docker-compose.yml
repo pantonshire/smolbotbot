@@ -59,4 +59,5 @@ services:
     environment:
       DATABASE_URL: "postgres://sbb:${DATABASE_PASSWORD}@database/sbb"
       RUST_LOG: sbb_archive=debug
-
+      SBB_ARCHIVE_META_NAME: "${SBB_ARCHIVE_META_NAME}"
+      SBB_ARCHIVE_META_URL_PREFIX: "${SBB_ARCHIVE_META_URL_PREFIX}"
