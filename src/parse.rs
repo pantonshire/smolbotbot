@@ -143,7 +143,7 @@ pub fn parse_group(text: &str) -> Option<ParsedGroup> {
 
 fn parse_cw(s: &str) -> ParseOut<Option<&str>> {
     lazy_static! {
-        static ref CW_RE: Regex = Regex::new(r"[\[\(][Cc][Nn]:\s*(\S[^\]\)]+)[\]\)]").unwrap();
+        static ref CW_RE: Regex = Regex::new(r"[\[\(](.+:)?\W*(\S[^\]\)]+)[\]\)]").unwrap();
     }
 
     let captures = match CW_RE.captures(s) {
@@ -152,7 +152,7 @@ fn parse_cw(s: &str) -> ParseOut<Option<&str>> {
     };
 
     let match_end = captures.get(0).unwrap().end();
-    let warning_type = captures.get(1).unwrap().as_str().trim();
+    let warning_type = captures.get(2).unwrap().as_str().trim();
 
     ParseOut::new(s[match_end..].trim_start(), Some(warning_type))
 }
