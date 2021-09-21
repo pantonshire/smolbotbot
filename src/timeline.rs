@@ -1,9 +1,12 @@
+use std::collections::HashSet;
+
 use anyhow::Context;
 use clap::Clap;
 use goldcrest::{TweetOptions, TimelineOptions, UserIdentifier};
 use sqlx::postgres::{PgPool, PgConnection};
 
 use crate::scribe::{self, ScribeFailure};
+use crate::model;
 
 #[derive(Clap)]
 pub(crate) struct Opts {
@@ -75,7 +78,29 @@ async fn scribe_timeline(
             let mut tweets = au_client
                 .user_timeline(user.clone(), timeline_options, tweet_options, true, true)
                 .await?;
-            tweets.retain(|tweet| tweet.id > 0);
+
+            let all_ids = tweets
+                .iter()
+                .map(|tweet| scribe::tweet_original(tweet).id as i64)
+                .collect::<Vec<_>>();
+
+            // Get the ids of the tweets already in the database; there is no need to parse these
+            // tweets again. Filtering them out now also avoids the robots.id sequence from being
+            // unneccessarily incremented ON CONFLICT
+            let existing_ids = sqlx::query_as::<_, model::TweetId>(
+                "SELECT tweet_id FROM UNNEST($1) as tweet_ids(tweet_id) \
+                WHERE EXISTS (SELECT 1 FROM robots WHERE robots.tweet_id = tweet_ids.tweet_id)"
+            )
+            .bind(all_ids)
+            .fetch_all(&mut *db_conn)
+            .await?
+            .into_iter()
+            .map(|row| row.tweet_id as u64)
+            .collect::<HashSet<_>>();
+
+            tweets.retain(|tweet| tweet.id > 0
+                && !existing_ids.contains(&scribe::tweet_original(tweet).id));
+            
             tweets
         };
 
@@ -94,7 +119,7 @@ async fn scribe_timeline(
             .unwrap() - 1);
 
         group_ids.extend(
-            scribe::scribe_tweets(db_conn, tweets, verbose)
+            scribe::scribe_tweets(&mut *db_conn, &tweets, verbose)
                 .await?
                 .into_iter());
     }

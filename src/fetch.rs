@@ -8,7 +8,7 @@ use sqlx::postgres::PgPool;
 use tokio::io::AsyncReadExt;
 
 use crate::model;
-use crate::scribe::ScribeFailure;
+use crate::scribe::{self, ScribeFailure};
 
 #[derive(Clap)]
 pub(crate) struct Opts {
@@ -32,7 +32,7 @@ pub(crate) async fn run(
     opts: Opts
 ) -> anyhow::Result<()>
 {
-    let input_tweet_ids = {
+    let tweet_ids = {
         let input = match opts.file {
             Some(input_path) =>
                 tokio::fs::read_to_string(&input_path)
@@ -49,29 +49,33 @@ pub(crate) async fn run(
             },
         };
 
-        let mut tweet_ids = input
+        let tweet_ids = input
             .split_ascii_whitespace()
-            .map(|id| id.parse()
+            .map(|id| id.parse::<u64>()
+                // Convert to i64 for database now rather than parsing as i64 because we want to
+                // error on negative inputs
+                .map(|id| id as i64)
                 .with_context(|| format!(r#"invalid tweet id "{}""#, id)))
             .collect::<anyhow::Result<Vec<i64>>>()?;
+
+        // Only use tweet ids that are not already in the database
+        let mut tweet_ids = sqlx::query_as::<_, model::TweetId>(
+            "SELECT tweet_id FROM UNNEST($1) as tweet_ids(tweet_id) \
+            WHERE NOT EXISTS (SELECT 1 FROM robots WHERE robots.tweet_id = tweet_ids.tweet_id)"
+        )
+        .bind(&tweet_ids)
+        .fetch_all(db_pool)
+        .await
+        .map(|ids| ids
+            .into_iter()
+            .map(|row| row.tweet_id as u64)
+            .collect::<Vec<u64>>())
+        .context("failed to check for existing tweet ids")?;
 
         tweet_ids.sort_unstable();
         tweet_ids.dedup();
         tweet_ids
     };
-
-    // Only use tweet ids that are not already in the database
-    let tweet_ids = sqlx::query_as::<_, model::TweetId>(
-        "SELECT tweet_id FROM UNNEST($1) as tweet_ids(tweet_id) \
-        WHERE tweet_id NOT IN (SELECT tweet_id FROM robots)"
-    )
-    .bind(input_tweet_ids)
-    .fetch_all(db_pool)
-    .await
-    .context("failed to check for existing tweet ids")?
-    .into_iter()
-    .map(|row| row.tweet_id as u64)
-    .collect::<Vec<_>>();
 
     let robot_ids = match opts.batch_size {
         Some(batch_size) => batched_fetch_and_scribe(au_client, db_pool, &tweet_ids, batch_size, opts.verbose).await,
@@ -150,11 +154,13 @@ async fn fetch_and_scribe(
             match tweets_res {
                 Err(err) => Err(err.into()),
 
-                Ok(tweets) => match db_pool.acquire().await {
-                    Err(err) => Err(err.into()),
+                Ok(tweets) => {
+                    match db_pool.acquire().await {
+                        Err(err) => Err(err.into()),
 
-                    Ok(mut pool_conn) =>
-                        crate::scribe::scribe_tweets(&mut pool_conn, tweets, verbose).await,
+                        Ok(mut pool_conn) =>
+                            scribe::scribe_tweets(&mut pool_conn, &tweets, verbose).await,
+                    }
                 },
             }
         }));

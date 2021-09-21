@@ -22,11 +22,18 @@ struct RobotTweetData<'a> {
     cw: Option<&'a str>,
 }
 
+pub(crate) fn tweet_original(mut tweet: &Tweet) -> &Tweet {
+    while let Some(ref retweeted) = tweet.retweeted {
+        tweet = retweeted.as_ref();
+    }
+    tweet
+}
+
 /// Parses and stores a collection of tweets in series, skipping any tweets that are not valid
 /// small robots.
 pub(crate) async fn scribe_tweets(
     db_conn: &mut PgConnection,
-    tweets: Vec<Tweet>,
+    tweets: &[Tweet],
     verbose: bool
 ) -> Result<Vec<i32>, ScribeFailure>
 {
@@ -52,14 +59,14 @@ pub(crate) async fn scribe_tweets(
 /// Parses the given tweet, adds it to the database and returns the id of the new robot group.
 pub(crate) async fn scribe_tweet(
     db_conn: &mut PgConnection,
-    tweet: Tweet
+    tweet: &Tweet
 ) -> Result<Plural<i32>, NotScribed>
 {
     const TEXT_OPTIONS: TweetTextOptions = TweetTextOptions::all()
         .media(false)
         .urls(false);
 
-    let tweet = tweet.original();
+    let tweet = tweet_original(tweet);
     let tweet_text = tweet.text(TEXT_OPTIONS);
 
     let group = match parse::parse_group(&tweet_text) {
