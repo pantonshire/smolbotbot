@@ -1,6 +1,6 @@
-use std::ops::Range;
 use std::borrow::Cow;
-use std::fmt;
+use std::convert::TryFrom;
+use std::ops::RangeInclusive;
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -61,33 +61,17 @@ impl RobotName<'_> {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
 struct ParseOut<'a, T> {
-    remainder: &'a str,
     output: T,
+    remainder: &'a str,
 }
-
-impl<'a, T> fmt::Debug for ParseOut<'a, T> where T: fmt::Debug {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ParseOut")
-            .field("output", &self.output)
-            .field("remainder", &self.remainder)
-            .finish()
-    }
-}
-
-impl<'a, T> PartialEq for ParseOut<'a, T> where T: Eq {
-    fn eq(&self, other: &Self) -> bool {
-        self.output == other.output && self.remainder == other.remainder
-    }
-}
-
-impl<'a, T> Eq for ParseOut<'a, T> where T: Eq {}
 
 impl<'a, T> ParseOut<'a, T> {
     const fn new(remainder: &'a str, output: T) -> Self {
         ParseOut {
-            remainder,
             output,
+            remainder,
         }
     }
 }
@@ -113,8 +97,15 @@ pub fn parse_group(text: &str) -> Option<ParsedGroup> {
     let ParseOut { remainder: s, output: n_range }
         = parse_numbers(s)?;
 
+    let min_number = *n_range.start();
+    let num_numbers = (*n_range.end() - *n_range.start())
+        .checked_add(1)
+        .and_then(|n| usize::try_from(n).ok())
+        .map(|n| n.min(MAX_GROUP_SIZE))
+        .unwrap_or(MAX_GROUP_SIZE);
+
     let ParseOut { remainder: s, output: (names, partial_names) }
-        = parse_names(s, n_range.len().min(MAX_GROUP_SIZE))?;
+        = parse_names(s, num_numbers.min(MAX_GROUP_SIZE))?;
 
     let body = BODY_RE
         .find(s)
@@ -125,7 +116,7 @@ pub fn parse_group(text: &str) -> Option<ParsedGroup> {
         .into_iter()
         .enumerate()
         .map(|(i, name)| Robot{
-            number: n_range.start + (i as i32),
+            number: min_number + (i as i32),
             name: if partial_names {
                 RobotName{ plural: None, ..name }
             } else {
@@ -143,7 +134,7 @@ pub fn parse_group(text: &str) -> Option<ParsedGroup> {
 
 fn parse_cw(s: &str) -> ParseOut<Option<&str>> {
     lazy_static! {
-        static ref CW_RE: Regex = Regex::new(r"[\[\(](.+:)?\W*(\S[^\]\)]+)[\]\)]").unwrap();
+        static ref CW_RE: Regex = Regex::new(r"^\s*[\[\(](.+:)?\W*(\S[^\]\)]+)[\]\)]").unwrap();
     }
 
     let captures = match CW_RE.captures(s) {
@@ -157,7 +148,7 @@ fn parse_cw(s: &str) -> ParseOut<Option<&str>> {
     ParseOut::new(s[match_end..].trim_start(), Some(warning_type))
 }
 
-fn parse_numbers(s: &str) -> Option<ParseOut<Range<i32>>> {
+fn parse_numbers(s: &str) -> Option<ParseOut<RangeInclusive<i32>>> {
     let (s, rem) = s
         .split_once(')')?;
 
@@ -171,12 +162,11 @@ fn parse_numbers(s: &str) -> Option<ParseOut<Range<i32>>> {
     let mut neg_enabled = true;
     let mut found_digit = false;
 
-    fn parse_i32_buf(buf: &str, neg: bool) -> Option<i32> {
-        let n = buf.parse::<i32>().ok()? * if neg { -1 } else { 1 };
-        if n == i32::MAX {
-            return None;
-        }
-        Some(n)
+    fn parse_number(buf: &str, neg: bool) -> Option<i32> {
+        buf
+            .parse::<i32>()
+            .ok()
+            .map(|n| n * if neg { -1 } else { 1 })
     }
 
     for c in s.chars() {
@@ -186,7 +176,7 @@ fn parse_numbers(s: &str) -> Option<ParseOut<Range<i32>>> {
             buf.push(c);
         } else {
             if !buf.is_empty() {
-                ns.push(parse_i32_buf(&buf, neg)?);
+                ns.push(parse_number(&buf, neg)?);
                 buf.clear();
             }
             if c == '-' {
@@ -204,13 +194,13 @@ fn parse_numbers(s: &str) -> Option<ParseOut<Range<i32>>> {
     }
 
     if !buf.is_empty() {
-        ns.push(parse_i32_buf(&buf, neg)?);
+        ns.push(parse_number(&buf, neg)?);
     }
 
     Some(ParseOut::new(rem, numbers_range(&ns)?))
 }
 
-fn numbers_range(ns: &[i32]) -> Option<Range<i32>> {
+fn numbers_range(ns: &[i32]) -> Option<RangeInclusive<i32>> {
     if ns.is_empty() {
         return None;
     }
@@ -218,7 +208,7 @@ fn numbers_range(ns: &[i32]) -> Option<Range<i32>> {
     let first = ns[0];
 
     if ns.len() == 1 {
-        return Some(first..first+1);
+        return Some(first..=first);
     }
 
     let (mut min_n, mut max_n) = (first, first);
@@ -248,7 +238,7 @@ fn numbers_range(ns: &[i32]) -> Option<Range<i32>> {
         }
     }
 
-    Some(min_n..max_n+1)
+    Some(min_n..=max_n)
 }
 
 fn parse_names(s: &str, target_n: usize) -> Option<ParseOut<(Vec<RobotName>, bool)>> {
@@ -343,26 +333,28 @@ mod tests {
     fn test_parse_numbers() {
         use super::parse_numbers;
 
-        assert_eq!(parse_numbers("123)"), Some(ParseOut::new("", 123..124)));
-        assert_eq!(parse_numbers("123) Teabot"), Some(ParseOut::new("Teabot", 123..124)));
-        assert_eq!(parse_numbers("  123  )  Teabot  "), Some(ParseOut::new("Teabot  ", 123..124)));
-        assert_eq!(parse_numbers("-1)"), Some(ParseOut::new("", -1..0)));
-        assert_eq!(parse_numbers("1, 2, 3)"), Some(ParseOut::new("", 1..4)));
-        assert_eq!(parse_numbers("123-124)"), Some(ParseOut::new("", 123..125)));
-        assert_eq!(parse_numbers("123 - 124)"), Some(ParseOut::new("", 123..125)));
-        assert_eq!(parse_numbers("123 & 4)"), Some(ParseOut::new("", 123..125)));
-        assert_eq!(parse_numbers("123 & 24)"), Some(ParseOut::new("", 123..125)));
-        assert_eq!(parse_numbers("124 & 3)"), Some(ParseOut::new("", 123..125)));
-        assert_eq!(parse_numbers("8, 7)"), Some(ParseOut::new("", 7..9)));
-        assert_eq!(parse_numbers("124-123)"), Some(ParseOut::new("", 123..125)));
-        assert_eq!(parse_numbers("1024 - 1048)"), Some(ParseOut::new("", 1024..1049)));
-        assert_eq!(parse_numbers("1024, 5 & 6)"), Some(ParseOut::new("", 1024..1027)));
-        assert_eq!(parse_numbers("1039, 8 & 40)"), Some(ParseOut::new("", 1038..1041)));
+        assert_eq!(parse_numbers("123)"), Some(ParseOut::new("", 123..=123)));
+        assert_eq!(parse_numbers("123) Teabot"), Some(ParseOut::new("Teabot", 123..=123)));
+        assert_eq!(parse_numbers("  123  )  Teabot  "), Some(ParseOut::new("Teabot  ", 123..=123)));
+        assert_eq!(parse_numbers("-1)"), Some(ParseOut::new("", -1..=-1)));
+        assert_eq!(parse_numbers("1, 2, 3)"), Some(ParseOut::new("", 1..=3)));
+        assert_eq!(parse_numbers("123-124)"), Some(ParseOut::new("", 123..=124)));
+        assert_eq!(parse_numbers("123 - 124)"), Some(ParseOut::new("", 123..=124)));
+        assert_eq!(parse_numbers("123 & 4)"), Some(ParseOut::new("", 123..=124)));
+        assert_eq!(parse_numbers("123 & 24)"), Some(ParseOut::new("", 123..=124)));
+        assert_eq!(parse_numbers("124 & 3)"), Some(ParseOut::new("", 123..=124)));
+        assert_eq!(parse_numbers("8, 7)"), Some(ParseOut::new("", 7..=8)));
+        assert_eq!(parse_numbers("124-123)"), Some(ParseOut::new("", 123..=124)));
+        assert_eq!(parse_numbers("1024 - 1048)"), Some(ParseOut::new("", 1024..=1048)));
+        assert_eq!(parse_numbers("1024, 5 & 6)"), Some(ParseOut::new("", 1024..=1026)));
+        assert_eq!(parse_numbers("1039, 8 & 40)"), Some(ParseOut::new("", 1038..=1040)));
         assert_eq!(parse_numbers("123"), None);
         assert_eq!(parse_numbers("Foo baa"), None);
-        assert_eq!(parse_numbers("2147483646)"), Some(ParseOut::new("", 2147483646..2147483647)));
-        assert_eq!(parse_numbers("2147483647)"), None);
+        assert_eq!(parse_numbers("2147483646)"), Some(ParseOut::new("", 2147483646..=2147483646)));
+        assert_eq!(parse_numbers("2147483647)"), Some(ParseOut::new("", 2147483647..=2147483647)));
         assert_eq!(parse_numbers("2147483648)"), None);
+        assert_eq!(parse_numbers("2147483646 - 2147483647)"), Some(ParseOut::new("", 2147483646..=2147483647)));
+        assert_eq!(parse_numbers("2147483646 - 2147483648)"), None);
         assert_eq!(parse_numbers("Hello)"), None);
         assert_eq!(parse_numbers("@foo 123)"), None);
         assert_eq!(parse_numbers("@foo123)"), None);
