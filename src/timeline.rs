@@ -53,6 +53,23 @@ pub(crate) async fn run(
     Ok(())
 }
 
+/// Returns whether or not the given user is identified by the given identifier (either a
+/// user ID or a user handle).
+fn user_matches_identifier(user: &goldcrest::data::User, identifier: &goldcrest::UserIdentifier) -> bool {
+    match identifier {
+        goldcrest::UserIdentifier::Id(id) => user.id == *id,
+        goldcrest::UserIdentifier::Handle(handle) => handles_eq(&user.handle.name_only, handle),
+    }
+}
+
+/// Returns whether or not the given handles are equal, treating ASCII case-insensitively.
+/// There is no need for unicode support, since handles cannot contain unicode.
+fn handles_eq(handle_l: &str, handle_r: &str) -> bool {
+    handle_l.len() == handle_r.len() && handle_l.chars()
+        .zip(handle_r.chars())
+        .all(|(char_l, char_r)| char_l.to_ascii_lowercase() == char_r.to_ascii_lowercase())
+}
+
 async fn scribe_timeline(
     au_client: &goldcrest::Client,
     db_conn: &mut PgConnection,
@@ -99,7 +116,12 @@ async fn scribe_timeline(
             .collect::<HashSet<_>>();
 
             tweets.retain(|tweet| tweet.id > 0
-                && !existing_ids.contains(&scribe::tweet_original(tweet).id));
+                // Check that the original tweet is from the specified user, since it may be a
+                // retweet of a different user's tweet
+                && user_matches_identifier(&scribe::tweet_original(tweet).user, &user)
+                // Check that the original tweet is not already in the database
+                && !existing_ids.contains(&scribe::tweet_original(tweet).id)
+            );
             
             tweets
         };
@@ -116,12 +138,14 @@ async fn scribe_timeline(
             .map(|tweet| tweet.id)
             .min()
             //Subtract 1 because, at the time of writing, max_id is inclusive
-            .unwrap() - 1);
+            .unwrap() - 1
+        );
 
         group_ids.extend(
             scribe::scribe_tweets(&mut *db_conn, &tweets, verbose)
                 .await?
-                .into_iter());
+                .into_iter()
+        );
     }
 
     Ok(group_ids)
