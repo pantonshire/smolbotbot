@@ -1,5 +1,77 @@
 [
   {
+    "robot": "-1/proto",
+    "alt": "A trapezoidal robot with two zigzaging antennae, caterpillar tracks and a tiny little face with a blank expression. It's wrapped up in a jumper and looks very cozy."
+  },
+  {
+    "robot": "0/logo",
+    "alt": "A collection of eleven robots, each in the shape of one of the letters of the words \"small robobts\"."
+  },
+  {
+    "robot": "1/tea",
+    "alt": "A robotic mug of tea on caterpillar tracks, smiling contentedly. Steam drifts gently from the hot beverage."
+  },
+  {
+    "robot": "2/friend",
+    "alt": "Two cuboid robots with spring-like legs and antennae, smiling and holding hands. They look like delightful little cubes of sugar."
+  },
+  {
+    "robot": "3/ball",
+    "alt": "A tattered robotic sphere covered in the slobber of a dog standing besides it. Despite the rough treatment it has received from the housepet, its little face smiles cheerfully."
+  },
+  {
+    "robot": "4/drink",
+    "alt": "A squarish robot peeking out from behind a corner. Attached to the top of its head is a sign with a picture of a glass of water."
+  },
+  {
+    "robot": "5/card",
+    "alt": "A round robot running and carrying a card with the words \"BIRTHDAY FRIEND\". Although we are grateful for its service, we feel it perhaps could have chosen a better birthday card."
+  },
+  {
+    "robot": "6/sleep",
+    "alt": "A small, blocky robot with two antennae and four wheels perched on a pillow, gently singing."
+  },
+  {
+    "robot": "7/listen",
+    "alt": "An angular, robotic ear with a small smiling face."
+  },
+  {
+    "robot": "8/spider",
+    "alt": "An ellipsoidal robot staring at a spider and holding above its head a sign with a big arrow. The menacing arachnid obediently follows the arrow."
+  },
+  {
+    "robot": "9/key",
+    "alt": "A cuboid robot with a fierce, determined expression carrying a magnifying glass almost the size of its entire body. It is pointing to a key on the ground."
+  },
+  {
+    "robot": "10/balloon",
+    "alt": "A robot with a shape akin to a butternut squash. Coming from its forehead is a long tube which is attached to a deflated balloon. A pipe at the robot's... uh... rear side is releasing the gas extracted from the balloon back into the atmosphere."
+  },
+  {
+    "robot": "11/floof",
+    "alt": "A tablet-like robot with tiny little legs and a smiling face. Displayed on its screen is a fluffy rabbit with a carrot. It seems that the carrot is not long for this world."
+  },
+  {
+    "robot": "12/song",
+    "alt": "A thimble-shaped robot with a blinking light on the end of its antenna, sitting on top of a small pile of books which are presumably the source of its knowledge."
+  },
+  {
+    "robot": "13/fluff",
+    "alt": "A pyramidical, quadrupedal robot walking cheerfully through a pile of fluff. Each foot has four toes, between which the fluff is getting caught."
+  },
+  {
+    "robot": "14/gender",
+    "alt": "A heart-shaped robot with two gas-burning rocket thrusters keeping it floating midair. It is smiling and saying the word \"you\"."
+  },
+  {
+    "robot": "15/dog",
+    "alt": "A robot with a blinking light tugging on a person's trouser leg and pointing urgently at a dog in the distance."
+  },
+  {
+    "robot": "16/bait",
+    "alt": "An angry looking robot travelling quickly using its single wheel while carrying a phone the size of its entire body."
+  },
+  {
     "robot": "1091/trick",
     "alt": "An animated gif of a round robot suspended in motion, limbs outstretched. It appears to be about to perform an incredible trick, but a buffering icon cruelly prevents us from seeing it. We feel frustrated at the unreliability of internet infrastructure."
   }
