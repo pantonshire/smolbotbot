@@ -72,6 +72,54 @@
     "alt": "An angry looking robot travelling quickly using its single wheel while carrying a phone the size of its entire body."
   },
   {
+    "robot": "18/signal",
+    "alt": "A robot shaped like a radio mast with a round smiling face at the top. Visualisations of radio waves are propagating from its head."
+  },
+  {
+    "robot": "19/door",
+    "alt": "A tiny, trapezoidal, bipedal robot doing its absolute best to keep a bathroom door four times its size closed."
+  },
+  {
+    "robot": "20/party",
+    "alt": "A cylindrical robot with a tiny party hat blowing very hard into a party blower."
+  },
+  {
+    "robot": "21/soft",
+    "alt": "A fluffy ball with a sweet, smiling face and a little antenna."
+  },
+  {
+    "robot": "22/save",
+    "alt": "A USB-A flash drive mounted on six tiny legs, with a smiling face on the opposite end to the connector. The word \"SAFE\" is scrawled on the top in capital letters."
+  },
+  {
+    "robot": "23/muffle",
+    "alt": "A pair of over-ear headphones. Both sides of the headphones have a face and two legs. On one side the numbers 5 and 11 are displayed, representing the date of Guy Fawkes night."
+  },
+  {
+    "robot": "24/leave",
+    "alt": "A tiny robot popping up from underneath a person's desk, where the person is working at a computer. The robot is looking worried and gesturing with its hand as it delivers its important reminder."
+  },
+  {
+    "robot": "25/dig",
+    "alt": "A round robot with two legs and two arms, standing to attention. In one hand it is carrying a shovel, and it is saluting with the other."
+  },
+  {
+    "robot": "26/rain",
+    "alt": "A robotic umbrella with a face at the top and a rocket thruster attached to the handle. It is soaring through the rain-filled sky at lightning speeds to save you from getting drenched."
+  },
+  {
+    "robot": "27/crunch",
+    "alt": "A dome-shaped robot connected to a spring on its underside. It is gleefully bouncing on a single leaf."
+  },
+  {
+    "robot": "28/fish",
+    "alt": "A pocket-sized robot sitting on the rim of a pint glass, using a fishing rod to retrieve the insects that have found their way into the drink."
+  },
+  {
+    "robot": "29/tangle",
+    "alt": "A many-armed robot sitting amongst a tangled mess of hair, looking confused as it attempts to untangle it."
+  },
+  {
     "robot": "1091/trick",
     "alt": "An animated gif of a round robot suspended in motion, limbs outstretched. It appears to be about to perform an incredible trick, but a buffering icon cruelly prevents us from seeing it. We feel frustrated at the unreliability of internet infrastructure."
   }
