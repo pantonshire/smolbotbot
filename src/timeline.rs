@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
 use anyhow::Context;
-use clap::Clap;
+use clap::Parser;
 use goldcrest::{TweetOptions, TimelineOptions, UserIdentifier};
 use sqlx::postgres::{PgPool, PgConnection};
 
 use crate::scribe::{self, ScribeFailure};
 use crate::model;
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 pub(crate) struct Opts {
     /// The maximum number of Tweets per timeline page, up to 200.
     #[clap(short = 'l', long, default_value = "200")]

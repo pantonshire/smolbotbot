@@ -1,31 +1,31 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use clap::Clap;
+use clap::Parser;
 use serde::{Serialize, Deserialize};
 use sqlx::postgres::PgPool;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::model;
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 pub(crate) struct Opts {
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 enum Subcommand {
     Import(ImportOpts),
     Export(ExportOpts),
 }
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 struct ImportOpts {
     file: Option<PathBuf>,
 }
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 struct ExportOpts {
     file: Option<PathBuf>,
 }

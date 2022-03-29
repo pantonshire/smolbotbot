@@ -4,13 +4,13 @@ use std::fmt::{self, Write};
 use std::path::PathBuf;
 
 use anyhow::Context;
-use clap::Clap;
+use clap::Parser;
 use sqlx::postgres::PgPool;
 use tokio::io::AsyncWriteExt;
 
 use crate::model;
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 pub(crate) struct Opts {
     /// The file to write the Tweet ids to.
     /// If omitted, they will be written to stdout instead.

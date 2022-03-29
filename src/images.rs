@@ -6,7 +6,7 @@ use std::io;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context};
-use clap::Clap;
+use clap::Parser;
 use governor::{Quota, RateLimiter};
 use image::{ImageFormat, DynamicImage, GenericImageView, ImageEncoder};
 use image::imageops::FilterType;
@@ -21,7 +21,7 @@ use url::Url;
 
 use crate::model::{RobotImageUrl, RobotImagePath, RobotImagePathOpt};
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 pub(crate) struct Opts {
     /// If set, download the images.
     #[clap(short, long = "download")]
@@ -51,7 +51,7 @@ pub(crate) struct Opts {
     subcommand: Subcommand,
 }
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 enum Subcommand {
     Ids,
     Missing,

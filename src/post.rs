@@ -1,6 +1,6 @@
 use anyhow::Context;
 use chrono::{Utc, NaiveDate, Duration};
-use clap::Clap;
+use clap::Parser;
 use goldcrest::{TweetBuilder, TweetOptions};
 use rand::seq::SliceRandom;
 use sqlx::Executor;
@@ -8,19 +8,19 @@ use sqlx::postgres::{PgPool, Postgres};
 
 use crate::model;
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 pub(crate) struct Opts {
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 enum Subcommand {
     /// Tweet the small robot of the day.
     Daily(DailyOpts),
 }
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 struct DailyOpts {
     /// The number of days before a robot group can be selected again after being selected.
     #[clap(short, long, default_value = "14")]

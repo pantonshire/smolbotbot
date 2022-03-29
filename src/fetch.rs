@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Context;
-use clap::Clap;
+use clap::Parser;
 use goldcrest::TweetOptions;
 use sqlx::postgres::PgPool;
 use tokio::io::AsyncReadExt;
@@ -10,7 +10,7 @@ use tokio::io::AsyncReadExt;
 use crate::model;
 use crate::scribe::{self, ScribeFailure};
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 pub(crate) struct Opts {
     /// The maximum number of tweets that can be requested concurrently. If omitted, all tweets
     /// will be requested concurrently.

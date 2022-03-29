@@ -20,14 +20,14 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use chrono::Duration;
-use clap::{Clap, crate_version, crate_authors, crate_description};
+use clap::Parser;
 use serde::Deserialize;
 use sqlx::postgres::PgPool;
 
 use error::{InvalidVarError, MissingVarError};
 
-#[derive(Clap)]
-#[clap(version = crate_version!(), author = crate_authors!(), about = crate_description!())]
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
 struct Opts {
     #[clap(short, long)]
     config: Option<PathBuf>,
@@ -36,7 +36,7 @@ struct Opts {
     command: MainCommand,
 }
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 enum MainCommand {
     /// Retrieve, parse and store a list of robot Tweets.
     Fetch(fetch::Opts),
@@ -198,12 +198,7 @@ async fn connect_db(config: DatabaseConfig) -> anyhow::Result<PgPool> {
     let db_url = env_var(VAR_DB_URL)?
         .or(config.url)
         .ok_or(MissingVarError("database url"))?;
-
-    // PgPoolOptions::new()
-    //     .connect_with(connect_opts)
-    //     .await
-    //     .with_context(|| format!("failed to connect to database at {}", db_url))
-
+        
     PgPool::connect(&db_url)
         .await
         .with_context(|| format!("failed to connect to database at {}", db_url))
