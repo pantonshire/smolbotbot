@@ -1,28 +1,30 @@
-FROM rust:1.54-alpine as planner
-WORKDIR /app/
-RUN apk update && apk add --no-cache musl-dev
-RUN cargo install cargo-chef && rm -rf /usr/local/cargo/registry/
-COPY Cargo.toml Cargo.lock ./
-COPY src/ ./src/
-RUN cargo chef prepare --recipe-path recipe.json
+# FROM lukemathwalker/cargo-chef:latest-rust-1.59.0-alpine AS chef
+# WORKDIR /app/
 
-FROM rust:1.54-alpine as cacher
+# FROM chef AS planner
+# COPY Cargo.toml Cargo.lock ./
+# COPY src/ ./src/
+# RUN cargo chef prepare --recipe-path recipe.json
+
+# FROM chef AS builder
+# COPY --from=planner /app/recipe.json ./recipe.json
+# RUN apk update && apk add --no-cache musl-dev protoc
+# # RUN cargo chef cook --release --recipe-path recipe.json
+# RUN cargo chef cook --no-default-features --recipe-path recipe.json
+# COPY src/ ./src/
+# # RUN cargo build --release --no-default-features
+# RUN cargo build --no-default-features
+
+FROM rust:1.59-alpine as builder
 WORKDIR /app/
 RUN apk update && apk add --no-cache musl-dev protoc
-RUN cargo install cargo-chef && rm -rf /usr/local/cargo/registry/
-COPY --from=planner /app/recipe.json ./recipe.json
-RUN cargo chef cook --release --no-default-features --recipe-path recipe.json
-
-FROM rust:1.54-alpine as builder
-WORKDIR /app/
 COPY Cargo.toml Cargo.lock ./
 COPY src/ ./src/
-COPY --from=cacher /app/target target
-COPY --from=cacher /usr/local/cargo /usr/local/cargo
-RUN cargo build --release --no-default-features
+RUN cargo build --no-default-features
 
 FROM alpine:latest as runtime
-COPY --from=builder /app/target/release/smolbotbot /usr/local/bin/sbb
+COPY --from=builder /app/target/debug/smolbotbot /usr/local/bin/sbb
+# COPY --from=builder /app/target/release/smolbotbot /usr/local/bin/sbb
 WORKDIR /sbb/
 COPY docker_runtime/ ./
 RUN chmod 0555 *.sh

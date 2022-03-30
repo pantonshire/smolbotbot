@@ -9,6 +9,7 @@ mod scribe;
 mod model;
 mod error;
 mod plural;
+mod ident;
 
 use std::default::Default;
 use std::env;

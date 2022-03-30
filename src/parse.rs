@@ -6,11 +6,22 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use unidecode::unidecode;
 
+use crate::model::IdentBuf;
+
 /// The name and number of a single robot.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Robot<'a> {
     pub number: i32,
     pub name: RobotName<'a>,
+}
+
+impl<'a> Robot<'a> {
+    pub fn ident(&self) -> IdentBuf {
+        IdentBuf {
+            number: self.number,
+            name: self.name.ident(),
+        }
+    }
 }
 
 /// The components of the name of a robot.
@@ -54,10 +65,10 @@ pub struct ParsedGroup<'a> {
 
 impl RobotName<'_> {
     /// Converts the robot's prefix from UTF-8 to ASCII and removes all non-alphanumeric characters.
-    pub fn identifier(&self) -> String {
-        let mut ident = unidecode(&self.prefix).to_lowercase();
-        ident.retain(|c| c.is_ascii_alphanumeric());
-        ident
+    fn ident(&self) -> String {
+        let mut buf = unidecode(&self.prefix).to_lowercase();
+        buf.retain(|c| c.is_ascii_alphanumeric());
+        buf
     }
 }
 

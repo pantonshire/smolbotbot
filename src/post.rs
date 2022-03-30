@@ -6,7 +6,7 @@ use rand::seq::SliceRandom;
 use sqlx::Executor;
 use sqlx::postgres::{PgPool, Postgres};
 
-use crate::model;
+use crate::model::{self, IdentBuf};
 
 #[derive(Parser, Debug)]
 pub(crate) struct Opts {
@@ -92,7 +92,7 @@ pub(crate) async fn run(
                 message.push(' ');
                 message.push_str(intro);
                 message.push_str(" #");
-                message.push_str(&robot.robot_number.to_string());
+                message.push_str(&robot.id.number.to_string());
                 message.push_str(", ");
                 message.push_str(&robot.full_name());
                 message.push_str("!\n");
@@ -107,7 +107,7 @@ pub(crate) async fn run(
                 .await
                 .context("failed to send tweet")?;
 
-            record_past_daily(db_pool, today, robot.id)
+            record_past_daily(db_pool, today, &robot.id)
                 .await
                 .context("failed to store daily robot in database")?;
 
@@ -129,7 +129,7 @@ fn lines(text: &str) -> Vec<&str> {
 async fn record_past_daily<'e, E>(
     db_exec: E,
     date: NaiveDate,
-    robot_id: i32
+    robot_id: &IdentBuf
 ) -> sqlx::Result<()>
 where
     E: Executor<'e, Database = Postgres>
@@ -153,7 +153,7 @@ where
 {
     sqlx::query_as(
         "SELECT \
-            id, robot_number, prefix, suffix, plural, tweet_id, content_warning \
+            id, prefix, suffix, plural, tweet_id, content_warning \
         FROM robots \
         WHERE EXISTS (\
             SELECT 1 FROM scheduled_dailies \
@@ -179,7 +179,7 @@ where
 
     sqlx::query_as(
         "SELECT \
-            id, robot_number, prefix, suffix, plural, tweet_id, content_warning \
+            id, prefix, suffix, plural, tweet_id, content_warning \
         FROM robots \
         WHERE NOT EXISTS (\
             SELECT 1 FROM past_dailies \

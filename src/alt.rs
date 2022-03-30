@@ -6,7 +6,7 @@ use serde::{Serialize, Deserialize};
 use sqlx::postgres::PgPool;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use crate::model;
+use crate::model::{self, IdentBuf};
 
 #[derive(Parser, Debug)]
 pub(crate) struct Opts {
@@ -68,19 +68,15 @@ async fn import_alt(db_pool: &PgPool, opts: ImportOpts) -> anyhow::Result<()> {
     drop(input);
 
     for entry in entries {
-        let (number, ident) = entry.robot.split_once('/')
-            .with_context(|| format!("invalid number/ident pair: {}", entry.robot))?;
+        let id = entry.robot.parse::<IdentBuf>()
+            .with_context(|| format!("invalid robot id: {}", entry.robot))?;
 
-        let number = number.parse::<i32>()
-            .with_context(|| format!("invalid robot number: {}", number))?;
-
-        sqlx::query("UPDATE robots SET custom_alt = $1 WHERE (ident, robot_number) = ($2, $3)")
+        sqlx::query("UPDATE robots SET custom_alt = $1 WHERE id = $2")
             .bind(entry.alt)
-            .bind(ident)
-            .bind(number)
+            .bind(&id)
             .execute(db_pool)
             .await
-            .with_context(|| format!("failed to update alt text for {}/{}", number, ident))?;
+            .with_context(|| format!("failed to update alt text for {}", id))?;
     }
 
     Ok(())
@@ -88,7 +84,7 @@ async fn import_alt(db_pool: &PgPool, opts: ImportOpts) -> anyhow::Result<()> {
 
 async fn export_alt(db_pool: &PgPool, opts: ExportOpts) -> anyhow::Result<()> {
     let robots: Vec<model::RobotCustomAltExport> = sqlx::query_as(
-        "SELECT robot_number, ident, custom_alt FROM robots \
+        "SELECT id, custom_alt FROM robots \
         WHERE custom_alt IS NOT NULL"
     )
     .fetch_all(db_pool)
@@ -98,7 +94,7 @@ async fn export_alt(db_pool: &PgPool, opts: ExportOpts) -> anyhow::Result<()> {
     let entries = robots
         .into_iter()
         .map(|robot| AltEntry {
-            robot: format!("{}/{}", robot.robot_number, robot.ident),
+            robot: robot.id.to_string(),
             alt: robot.custom_alt,
         })
         .collect::<Vec<_>>();

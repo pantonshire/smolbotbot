@@ -7,7 +7,7 @@ use goldcrest::TweetOptions;
 use sqlx::postgres::PgPool;
 use tokio::io::AsyncReadExt;
 
-use crate::model;
+use crate::model::{self, IdentBuf};
 use crate::scribe::{self, ScribeFailure};
 
 #[derive(Parser, Debug)]
@@ -98,7 +98,7 @@ async fn batched_fetch_and_scribe(
     tweet_ids: &[u64],
     batch_size: usize,
     verbose: bool
-) -> Result<Vec<i32>, ScribeFailure>
+) -> Result<Vec<IdentBuf>, ScribeFailure>
 {
     let mut group_ids = Vec::new();
     let num_tweets = tweet_ids.len();
@@ -126,7 +126,7 @@ async fn fetch_and_scribe(
     db_pool: &PgPool,
     tweet_ids: &[u64],
     verbose: bool
-) -> Result<Vec<i32>, ScribeFailure>
+) -> Result<Vec<IdentBuf>, ScribeFailure>
 {
     const TWEETS_PER_REQUEST: usize = 100;
 

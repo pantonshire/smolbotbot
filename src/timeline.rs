@@ -6,7 +6,7 @@ use goldcrest::{TweetOptions, TimelineOptions, UserIdentifier};
 use sqlx::postgres::{PgPool, PgConnection};
 
 use crate::scribe::{self, ScribeFailure};
-use crate::model;
+use crate::model::{self, IdentBuf};
 
 #[derive(Parser, Debug)]
 pub(crate) struct Opts {
@@ -77,7 +77,7 @@ async fn scribe_timeline(
     page_length: u32,
     pages: usize,
     verbose: bool
-) -> Result<Vec<i32>, ScribeFailure>
+) -> Result<Vec<IdentBuf>, ScribeFailure>
 {
     let mut group_ids = Vec::new();
     let mut max_id = None;

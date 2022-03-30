@@ -19,7 +19,7 @@ use tokio::io::AsyncReadExt;
 use tokio::sync::Semaphore;
 use url::Url;
 
-use crate::model::{RobotImageUrl, RobotImagePath, RobotImagePathOpt};
+use crate::model::{RobotImageUrl, RobotImagePath, RobotImagePathOpt, IdentBuf};
 
 #[derive(Parser, Debug)]
 pub(crate) struct Opts {
@@ -189,7 +189,7 @@ pub(crate) async fn run(db_pool: &PgPool, opts: Opts) -> anyhow::Result<()> {
 }
 
 // Reads a list of robot robot ids from stdin.
-async fn read_stdin_ids() -> anyhow::Result<Vec<i32>> {
+async fn read_stdin_ids() -> anyhow::Result<Vec<IdentBuf>> {
     let mut buffer = String::new();
     tokio::io::stdin()
         .read_to_string(&mut buffer)
@@ -198,7 +198,7 @@ async fn read_stdin_ids() -> anyhow::Result<Vec<i32>> {
     buffer
         .split_whitespace()
         .map(|id| id
-            .parse::<i32>()
+            .parse::<IdentBuf>()
             .map_err(|_| anyhow!("invalid robot robot id \"{}\"", id)))
         .collect::<Result<Vec<_>, _>>()
 }
@@ -206,7 +206,7 @@ async fn read_stdin_ids() -> anyhow::Result<Vec<i32>> {
 /// Get the image urls of all of the robots with the given ids.
 async fn get_image_urls(
     db_conn: &mut PgConnection,
-    robot_ids: &[i32]
+    robot_ids: &[IdentBuf]
 ) -> sqlx::Result<Vec<RobotImageUrl>>
 {
     sqlx::query_as("SELECT id, image_url FROM robots WHERE id = ANY($1)")
@@ -228,7 +228,7 @@ async fn get_image_urls_missing(
 /// Get the image paths of all of the robots with the given ids.
 async fn get_image_paths(
     db_conn: &mut PgConnection,
-    robot_ids: &[i32]
+    robot_ids: &[IdentBuf]
 ) -> sqlx::Result<Vec<RobotImagePathOpt>>
 {
     sqlx::query_as("SELECT id, image_path FROM robots WHERE id = ANY($1)")
@@ -271,9 +271,9 @@ async fn get_images(
         let http_client = http_client.clone();
         let dir = dir.clone();
 
-        let file_name = gen_image_file_name("orig", robot.id, "png");
+        let file_name = gen_image_file_name("orig", &robot.id, "png");
 
-        join_handles.push((robot.id, tokio::spawn(async move {
+        join_handles.push((robot.id.clone(), tokio::spawn(async move {
             match file_name {
                 Ok(file_name) => match semaphore.acquire().await {
                     Ok(_permit) => {
@@ -325,7 +325,7 @@ where
     let mut db_conn = db_pool
         .acquire()
         .await
-        .map_err(|err| ImgError::new(robot.id, err.into()))?;
+        .map_err(|err| ImgError::new(robot.id.clone(), err.into()))?;
 
     store_image_path(&mut db_conn, robot, file_name).await
 }
@@ -339,26 +339,26 @@ where
     P: AsRef<Path>
 {
     let image_url = image_large_png_url(&robot.image_url)
-        .map_err(|err| ImgError::new(robot.id, err.into()))?;
+        .map_err(|err| ImgError::new(robot.id.clone(), err.into()))?;
 
     let resp = http_client.get(image_url)
         .send()
         .await
-        .map_err(|err| ImgError::new(robot.id, err.into()))?;
+        .map_err(|err| ImgError::new(robot.id.clone(), err.into()))?;
 
     match resp.status() {
         status if status.is_success() => {
             let image_data = resp
                 .bytes()
                 .await
-                .map_err(|err| ImgError::new(robot.id, err.into()))?;
+                .map_err(|err| ImgError::new(robot.id.clone(), err.into()))?;
 
             tokio::fs::write(path, &image_data)
                 .await
-                .map_err(|err| ImgError::new(robot.id, err.into()))
+                .map_err(|err| ImgError::new(robot.id.clone(), err.into()))
         },
 
-        status => Err(ImgError::new(robot.id, ImgErrorCause::HttpError(status))),
+        status => Err(ImgError::new(robot.id.clone(), ImgErrorCause::HttpError(status))),
     }
 }
 
@@ -370,14 +370,14 @@ async fn store_image_path(
 {
     let rows_affected = sqlx::query("UPDATE robots SET image_path = $1 WHERE id = $2")
         .bind(file_name)
-        .bind(robot.id)
+        .bind(&robot.id)
         .execute(db_conn)
         .await
-        .map_err(|err| ImgError::new(robot.id, err.into()))?
+        .map_err(|err| ImgError::new(robot.id.clone(), err.into()))?
         .rows_affected();
 
     if rows_affected < 1 {
-        Err(ImgError::new(robot.id, ImgErrorCause::NoRowsUpdated))
+        Err(ImgError::new(robot.id.clone(), ImgErrorCause::NoRowsUpdated))
     } else {
         Ok(())
     }
@@ -402,9 +402,9 @@ async fn gen_thumbs(
         let db_pool = db_pool.clone();
         let dir = dir.clone();
 
-        let file_name = gen_image_file_name("thumb", robot.id, "jpg");
+        let file_name = gen_image_file_name("thumb", &robot.id, "jpg");
 
-        join_handles.push((robot.id, tokio::spawn(async move {
+        join_handles.push((robot.id.clone(), tokio::spawn(async move {
             match file_name {
                 Ok(file_name) => match semaphore.acquire().await {
                     Ok(_permit) => gen_thumb(
@@ -452,12 +452,12 @@ where
         let image_data = match dir.as_ref(){
             Some(dir) => tokio::fs::read(dir.as_ref().join(&robot.image_path)).await,
             None => tokio::fs::read(&robot.image_path).await,
-        }.map_err(|err| ImgError::new(robot.id, err.into()))?;
+        }.map_err(|err| ImgError::new(robot.id.clone(), err.into()))?;
 
         match ImageFormat::from_path(&robot.image_path).ok() {
             Some(image_format) => image::load_from_memory_with_format(&image_data, image_format),
             None => image::load_from_memory(&image_data),
-        }.map_err(|err| ImgError::new(robot.id, err.into()))?
+        }.map_err(|err| ImgError::new(robot.id.clone(), err.into()))?
     };
 
     let thumb = original.resize_to_fill(size, size, FilterType::Lanczos3);
@@ -471,30 +471,30 @@ where
     
     jpeg::JpegEncoder::new_with_quality(&mut buffer, quality)
         .write_image(thumb.as_bytes(), thumb.width(), thumb.height(), thumb.color())
-        .map_err(|err| ImgError::new(robot.id, err.into()))?;
+        .map_err(|err| ImgError::new(robot.id.clone(), err.into()))?;
 
     drop(thumb);
 
     match dir.as_ref() {
         Some(dir) => tokio::fs::write(dir.as_ref().join(file_name), buffer).await,
         None => tokio::fs::write(file_name, buffer).await,
-    }.map_err(|err| ImgError::new(robot.id, err.into()))?;
+    }.map_err(|err| ImgError::new(robot.id.clone(), err.into()))?;
 
     let mut db_conn = db_pool
         .acquire()
         .await
-        .map_err(|err| ImgError::new(robot.id, err.into()))?;
+        .map_err(|err| ImgError::new(robot.id.clone(), err.into()))?;
 
     let rows_affected = sqlx::query("UPDATE robots SET image_thumb_path = $1 WHERE id = $2")
         .bind(file_name)
-        .bind(robot.id)
+        .bind(&robot.id)
         .execute(&mut db_conn)
         .await
-        .map_err(|err| ImgError::new(robot.id, err.into()))?
+        .map_err(|err| ImgError::new(robot.id.clone(), err.into()))?
         .rows_affected();
 
     if rows_affected < 1 {
-        Err(ImgError::new(robot.id, ImgErrorCause::NoRowsUpdated))
+        Err(ImgError::new(robot.id.clone(), ImgErrorCause::NoRowsUpdated))
     } else {
         Ok(())
     }
@@ -551,7 +551,7 @@ fn image_large_png_url(url: &str) -> Result<Url, url::ParseError> {
     Ok(image_url)
 }
 
-fn gen_image_file_name(image_type: &str, id: i32, extension: &str) -> Result<String, fmt::Error> {
+fn gen_image_file_name(image_type: &str, id: &IdentBuf, extension: &str) -> Result<String, fmt::Error> {
     use fmt::Write;
 
     let mut name = String::new();
@@ -559,7 +559,9 @@ fn gen_image_file_name(image_type: &str, id: i32, extension: &str) -> Result<Str
     name.push_str(image_type);
     name.push('_');
 
-    write!(&mut name, "{}", id)?;
+    write!(&mut name, "{}", id.number)?;
+    name.push('_');
+    name.push_str(&id.name);
     name.push('_');
     
     let rand_token = rand::thread_rng().gen::<u128>();
@@ -573,7 +575,7 @@ fn gen_image_file_name(image_type: &str, id: i32, extension: &str) -> Result<Str
 
 #[derive(Debug)]
 struct ImgError {
-    robot_id: i32,
+    robot_id: IdentBuf,
     cause: ImgErrorCause,
 }
 
@@ -592,8 +594,8 @@ enum ImgErrorCause {
 }
 
 impl ImgError {
-    const fn new(robot_id: i32, cause: ImgErrorCause) -> Self {
-        ImgError {
+    const fn new(robot_id: IdentBuf, cause: ImgErrorCause) -> Self {
+        Self {
             robot_id,
             cause,
         }

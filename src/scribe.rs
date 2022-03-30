@@ -8,7 +8,7 @@ use goldcrest::data::tweet::TweetTextOptions;
 use sqlx::Connection;
 use sqlx::postgres::PgConnection;
 
-use crate::model;
+use crate::model::IdentBuf;
 use crate::parse::{self, Robot};
 use crate::plural::Plural;
 
@@ -35,7 +35,7 @@ pub(crate) async fn scribe_tweets(
     db_conn: &mut PgConnection,
     tweets: &[Tweet],
     verbose: bool
-) -> Result<Vec<i32>, ScribeFailure>
+) -> Result<Vec<IdentBuf>, ScribeFailure>
 {
     let mut group_ids = Vec::new();
 
@@ -43,7 +43,7 @@ pub(crate) async fn scribe_tweets(
         let tweet_id = tweet.id;
 
         match scribe_tweet(db_conn, tweet).await {
-            Ok(robot_ids) => group_ids.extend(robot_ids.iter()),
+            Ok(robot_ids) => group_ids.extend(robot_ids.into_iter()),
 
             Err(NotScribed::InvalidTweet(err)) => if verbose {
                 eprintln!("skip tweet {}: {}", tweet_id, err);
@@ -60,7 +60,7 @@ pub(crate) async fn scribe_tweets(
 pub(crate) async fn scribe_tweet(
     db_conn: &mut PgConnection,
     tweet: &Tweet
-) -> Result<Plural<i32>, NotScribed>
+) -> Result<Plural<IdentBuf>, NotScribed>
 {
     const TEXT_OPTIONS: TweetTextOptions = TweetTextOptions::all()
         .media(false)
@@ -126,40 +126,40 @@ pub(crate) async fn scribe_tweet(
     }
 }
 
+//TODO: test duplicate robot id
 async fn store_robot(
     db_conn: &mut PgConnection,
     robot: &Robot<'_>,
     tweet_data: &RobotTweetData<'_>,
-) -> Result<i32, NotScribed>
+) -> Result<IdentBuf, NotScribed>
 {
-    let ident = robot.name.identifier();
-
-    sqlx::query_as::<_, model::Id>(
+    let ident = robot.ident();
+    
+    let res = sqlx::query(
         "INSERT INTO robots \
-            (robot_number, prefix, suffix, plural, ident, tweet_id, tweet_time, \
-             image_url, body, alt, content_warning) \
+            (id, prefix, suffix, plural, tweet_id, tweet_time, image_url, body, alt, content_warning) \
         VALUES \
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) \
-        ON CONFLICT (robot_number, ident) DO NOTHING \
-        RETURNING id"
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
+        ON CONFLICT (id) DO NOTHING"
     )
-    .bind(robot.number)
+    .bind(&ident)
     .bind(robot.name.prefix.as_ref())
     .bind(robot.name.suffix.as_ref())
     .bind(robot.name.plural.as_ref().map(Cow::as_ref))
-    .bind(ident.as_str())
     .bind(tweet_data.tweet_id)
     .bind(tweet_data.tweet_time)
     .bind(tweet_data.image_url)
     .bind(tweet_data.body)
     .bind(tweet_data.alt)
     .bind(tweet_data.cw)
-    .fetch_optional(db_conn)
+    .execute(db_conn)
     .await
-    .map_err(NotScribed::from)
-    .and_then(|row| row
-        .ok_or(InvalidTweet::DuplicateRobot(robot.number, ident).into()))
-    .map(|row| row.id)
+    .map_err(NotScribed::from)?;
+
+    match res.rows_affected() {
+        0 => Err(InvalidTweet::DuplicateRobot(ident).into()),
+        _ => Ok(ident),
+    }
 }
 
 fn is_valid_robot_media(media: &Media) -> bool {
@@ -211,7 +211,7 @@ impl From<tokio::task::JoinError> for NotScribed {
 pub(crate) enum InvalidTweet {
     ParseUnsuccessful,
     MissingMedia,
-    DuplicateRobot(i32, String),
+    DuplicateRobot(IdentBuf),
     NoRobots,
 }
 
@@ -220,7 +220,7 @@ impl fmt::Display for InvalidTweet {
         match self {
             Self::ParseUnsuccessful => write!(f, "could not parse robot data from tweet"),
             Self::MissingMedia => write!(f, "tweet does not contain media"),
-            Self::DuplicateRobot(number, ident) => write!(f, "robot ({}, {}) already exists", number, ident),
+            Self::DuplicateRobot(ident) => write!(f, "robot {} already exists", ident),
             Self::NoRobots => write!(f, "no robots in tweet"),
         }
     }
